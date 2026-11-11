@@ -23,22 +23,22 @@ a{color:inherit}
 .top nav a:hover{color:var(--accent)}
 
 /* hero, styled after the business card */
-/* signature dresses photo shown whole, behind all the heading text.
-   Layers: blurred copy filling the sides, the full photo, a dark shade for reading, then the text */
-.hero{color:#fff;padding:96px 0 88px;min-height:min(86vh,760px);display:flex;align-items:center;position:relative;overflow:hidden;isolation:isolate;border-bottom:4px solid var(--accent);background:#231d18}
-.hero::after{content:"";position:absolute;inset:-40px;z-index:-3;background:url("images/signature-dresses.jpg") center/cover no-repeat;filter:blur(22px) brightness(.42)}
-.hero-photo{position:absolute;z-index:-2;top:0;left:50%;height:100%;width:auto;max-width:none;transform:translateX(-50%);-webkit-mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%);mask-image:linear-gradient(90deg,transparent 0,#000 7%,#000 93%,transparent 100%)}
-.hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(24,20,16,.86) 0%,rgba(24,20,16,.7) 38%,rgba(24,20,16,.32) 68%,rgba(24,20,16,.18) 100%)}
-.hero-inner{width:100%}
-.hero-logo{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);background:#fff;display:block;margin:0 0 18px}
-.hero-text{max-width:560px;text-shadow:0 1px 3px rgba(0,0,0,.45)}
-.hero h1{font-size:44px;line-height:1.1;margin:0 0 12px;text-transform:uppercase;letter-spacing:1px;color:#fff}
-.hero .tagline{font-size:17px;font-weight:600;color:var(--black);margin:0 0 18px;background:var(--accent-soft);border:1px solid var(--accent);display:inline-block;padding:6px 14px;border-radius:4px;text-shadow:none}
-.hero p{font-size:18px;color:#f3ece0;max-width:620px;margin:0 0 26px}
-.hero-details{background:rgba(255,255,255,.94);color:var(--black);border:1px solid var(--accent);border-radius:8px;padding:12px 16px;margin:0 0 22px;display:inline-block;font-weight:600;font-size:15px;line-height:1.7;text-shadow:none}
+/* signature dresses photo shown whole, like a poster. The business name sits in the open
+   space at the top of the photo and the buttons at the bottom, so no one in the photo is covered */
+.hero{position:relative;overflow:hidden;isolation:isolate;background:#231d18;border-bottom:4px solid var(--accent);color:#fff}
+.hero::after{content:"";position:absolute;inset:-40px;z-index:-1;background:url("images/signature-dresses.jpg") center/cover no-repeat;filter:blur(24px) brightness(.4)}
+.poster{position:relative;margin:0 auto;container-type:inline-size;width:min(100%,max(480px,calc((100vh - 74px) / 1.5)));width:min(100%,max(480px,calc((100svh - 74px) / 1.5)));box-shadow:0 0 60px rgba(0,0,0,.45)}
+.poster-img{display:block;width:100%;height:auto}
+.poster-top{position:absolute;left:0;right:0;top:0;height:22.5%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 6%;background:linear-gradient(180deg,rgba(20,16,12,.5),rgba(20,16,12,.15) 80%,rgba(20,16,12,0));text-shadow:0 2px 8px rgba(0,0,0,.55)}
+.poster-top h1{font-size:30px;font-size:6.4cqw;line-height:1.08;margin:0 0 2.6cqw;text-transform:uppercase;letter-spacing:.06em;color:#fff}
+.poster-top .tagline{font-size:13px;font-size:max(12px,2.5cqw);font-weight:600;color:var(--black);margin:0;background:var(--accent-soft);border:1px solid var(--accent);padding:.35em .9em;border-radius:4px;text-shadow:none}
+.poster-bottom{position:absolute;left:0;right:0;bottom:0;height:9%;display:flex;align-items:center;justify-content:center;gap:2.4cqw;background:linear-gradient(0deg,rgba(20,16,12,.45),rgba(20,16,12,0))}
+.poster-bottom .btn{margin:0;font-size:14px;font-size:max(13px,2.4cqw);padding:.75em 1.4em}
+.hero .btn.dark{color:#fff;border-color:#fff;background:rgba(0,0,0,.25)}
+.hero-info{text-align:center;padding:30px 20px 40px}
+.hero-info p{font-size:18px;color:#f3ece0;max-width:640px;margin:16px auto 0}
+.hero-details{background:rgba(255,255,255,.94);color:var(--black);border:1px solid var(--accent);border-radius:8px;padding:12px 16px;display:inline-block;font-weight:600;font-size:15px;line-height:1.7;text-align:left}
 .hero-details a{color:var(--accent-dark)}
-.hero .btn{text-shadow:none}
-.hero .btn.dark{color:#fff;border-color:#fff;background:rgba(0,0,0,.2)}
 .btn{display:inline-block;padding:13px 24px;border-radius:6px;font-weight:600;text-decoration:none;border:2px solid var(--black);margin-right:10px;margin-bottom:10px}
 .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
 .btn.dark{background:transparent;color:var(--black)}
@@ -108,15 +108,8 @@ footer{background:var(--taupe);color:#ddd5c4;padding:34px 0;font-size:14px}
 footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
 footer b{color:var(--accent-soft)}
 
-@media (max-width:860px){
-  .hero{padding:48px 0 44px;min-height:0}
-  .hero-photo{left:0;width:100%;height:auto;transform:none;-webkit-mask-image:linear-gradient(180deg,#000 80%,transparent 100%);mask-image:linear-gradient(180deg,#000 80%,transparent 100%)}
-  .hero::before{background:linear-gradient(180deg,rgba(24,20,16,.4) 0,rgba(24,20,16,.6) 60%,rgba(24,20,16,.78) 100%)}
-}
 @media (max-width:640px){
-  .hero h1{font-size:30px}
   h2{font-size:26px}
-  .hero-logo{width:80px;height:80px}
   .top nav a{margin-left:12px;font-size:14px}
   section{padding:52px 0}
 }
@@ -205,22 +198,25 @@ footer b{color:var(--accent-soft)}
 <div id="top"></div>
 
 <div class="hero">
-  <img class="hero-photo" src="images/signature-dresses.jpg" width="1024" height="1028" fetchpriority="high"
-       alt="Eight women wearing Tiare's Five Fold Creations signature dresses, each with a central hand-printed design">
-  <div class="wrap hero-inner">
-    <div class="hero-text">
-      <img class="hero-logo" src="images/logo.jpg" alt="Tiare's Five Fold Creations logo">
+  <div class="poster">
+    <img class="poster-img" src="images/signature-dresses.jpg" width="1024" height="1536" fetchpriority="high"
+         alt="Eight women wearing Tiare's Five Fold Creations signature dresses in purple, blue, orange, yellow and red, each with a central hand-printed design">
+    <div class="poster-top">
       <h1>Tiare's Five Fold Creations</h1>
       <p class="tagline">Tailoring &middot; Clothing &middot; Jewelry</p>
-      <div class="hero-details">
-        <div>P.O. Box 2589, Vision City, 1131 Waigani, NCD</div>
-        <div>PH: 76628003 / 73606549</div>
-        <div>Email: <a href="mailto:atiaresholdings@gmail.com">atiaresholdings@gmail.com</a></div>
-      </div>
-      <p>Tiare's Five Fold Creations designs and sells clothing and accessories for everyday wear and special occasions. Every design can be made to your size and measurements.</p>
+    </div>
+    <div class="poster-bottom">
       <a class="btn primary" href="#catalogue">See designs in stock</a>
       <a class="btn dark" href="#contact">Contact us</a>
     </div>
+  </div>
+  <div class="hero-info">
+    <div class="hero-details">
+      <div>P.O. Box 2589, Vision City, 1131 Waigani, NCD</div>
+      <div>PH: 76628003 / 73606549</div>
+      <div>Email: <a href="mailto:atiaresholdings@gmail.com">atiaresholdings@gmail.com</a></div>
+    </div>
+    <p>Tiare's Five Fold Creations designs and sells clothing and accessories for everyday wear and special occasions. Every design can be made to your size and measurements.</p>
   </div>
 </div>
 
