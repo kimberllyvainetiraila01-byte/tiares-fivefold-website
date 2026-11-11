@@ -126,6 +126,7 @@ footer b{color:var(--accent-soft)}
 .pm-sizes{display:flex;flex-wrap:wrap;gap:8px}
 .pm-size{min-width:58px;padding:10px 12px;border:1px solid var(--black);background:#fff;color:var(--black);border-radius:6px;font-weight:700;cursor:pointer;font-size:15px}
 .pm-size.on{background:var(--black);color:#fff}
+.pm-size:disabled{border-color:#d8d0c2;color:#aaa;background:#f5f2ec;text-decoration:line-through;cursor:not-allowed}
 .pm-size.custom{border-style:dashed}
 .pm-custom{margin-top:14px}
 .pm-custom[hidden]{display:none}
@@ -311,17 +312,18 @@ async function loadCatalogue() {
   try {
     const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     // Public columns only: cost is deliberately not selected
-    const { data, error } = await sb.from('public_catalogue')
-      .select('line,sku,design,size,units,price,photo_url')
+    const { data, error } = await sb.from('public_catalogue_sizes')
+      .select('line,sku,design,size,units,price,photo_url,in_stock')
       .order('line').order('sku');
     if (error) throw error;
     // The view has one row per size, so group rows into one card per SKU
     const bySku = new Map();
     (data || []).forEach(r => {
       if (!bySku.has(r.sku)) bySku.set(r.sku, { sku: r.sku, line: r.line, design: r.design, price: r.price, photo_url: r.photo_url, sizes: [] });
-      bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units });
+      bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units, in_stock: !!r.in_stock });
     });
-    groups = [...bySku.values()].sort((a, b) =>
+    // Show a design only if at least one of its sizes is in stock; sold-out sizes stay visible but greyed out
+    groups = [...bySku.values()].filter(g => g.sizes.some(s => s.in_stock)).sort((a, b) =>
       LINE_ORDER.indexOf(a.line) - LINE_ORDER.indexOf(b.line) || skuNum(a.sku) - skuNum(b.sku));
     groups.forEach(g => g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true })));
     renderTabs();
@@ -412,7 +414,7 @@ function openItem(i) {
   document.getElementById('pmCustom').value = '';
   document.getElementById('pmCustomWrap').hidden = true;
   document.getElementById('pmSizes').innerHTML = curSizes.map((s, n) =>
-    `<button class="pm-size" onclick="pmPick(${n})">${esc(s.size)}</button>`).join('') +
+    `<button class="pm-size" ${s.in_stock ? '' : 'disabled title="Sold out"'} onclick="pmPick(${n})">${esc(s.size)}</button>`).join('') +
     `<button class="pm-size custom" onclick="pmCustomPick()">Custom size</button>`;
   pmShowQty();
   pmUpdate();
