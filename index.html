@@ -171,6 +171,8 @@ footer b{color:var(--accent-soft)}
 .cart-ref{font-size:20px;font-weight:700;letter-spacing:1px;color:var(--accent-dark)}
 .cart-desc{font-size:14px;background:#f5f2ec;border-radius:6px;padding:8px 10px;word-break:break-word}
 .cart-radios{display:flex;gap:18px;font-weight:600}
+.track-form{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
+.track-form input{flex:1;min-width:200px;padding:11px;border:1px solid #cfc4b0;border-radius:6px;font-size:15px}
 </style>
 </head>
 <body>
@@ -720,6 +722,51 @@ function cartClear() {
   updateCartCount();
 }
 
+// ---------- Pickup dates and order tracking ----------
+const pad2 = n => String(n).padStart(2, '0');
+const ymd = d => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+const fmtLong = d => d.toLocaleDateString('en-PG', { day: 'numeric', month: 'long', year: 'numeric' });
+const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+// First Friday at least 7 days from today (orders take 1 to 2 weeks)
+function suggestPickup() {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  let fri = addDays(d, 7);
+  while (fri.getDay() !== 5) fri = addDays(fri, 1);
+  return fri;
+}
+
+function pickupText(fri) {
+  return 'Friday ' + fmtLong(fri) + ' or Saturday ' + fmtLong(addDays(fri, 1));
+}
+
+async function trackOrder(e) {
+  e.preventDefault();
+  const out = document.getElementById('trackResult');
+  out.textContent = 'Checking...';
+  const { data, error } = await orderSb.rpc('track_order', {
+    p_name: document.getElementById('trackName').value,
+    p_txn: document.getElementById('trackTxn').value
+  });
+  if (error) { out.textContent = 'Could not check right now. Please try again.'; return; }
+  const r = data && data[0];
+  if (!r) { out.textContent = 'No order found with that name and reference. Check your details, or WhatsApp us for help.'; return; }
+  out.textContent = trackText(r);
+}
+
+function trackText(r) {
+  if (r.status === 'pending') return 'Your payment is being checked. We will confirm your order soon.';
+  if (r.status === 'cancelled') return 'This order was cancelled. Please WhatsApp us for help.';
+  if (r.progress === 'received') return 'Order received. Customised orders usually take 1 to 2 weeks.';
+  if (r.progress === 'in_progress') return 'Your order is being made.';
+  if (r.progress === 'ready') return r.pickup_date
+    ? 'Ready! Pickup or delivery on ' + fmtLong(new Date(r.pickup_date + 'T00:00')) + '.'
+    : 'Ready! We will confirm your pickup date soon.';
+  if (r.progress === 'delivered') return 'Delivered. Thank you for shopping with us!';
+  return 'Order found.';
+}
+
 const orderSb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 async function cartSendWhatsApp() {
@@ -730,10 +777,11 @@ async function cartSendWhatsApp() {
   const amount = parseFloat(amtText.replace(/,/g, ''));
   const bank = document.querySelector('input[name="cartBank"]:checked');
   if (!cart.length || name.length < 2 || txn.length < 4 || !(amount > 0) || !bank) return;
+  const sug = suggestPickup();
 
   const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
-  const msg = `Hi Tiare's Five Fold Creations, I have paid for my order.\nTransaction reference: ${txn}\nAmount paid: K${amtText}\nName: ${name}\nPaid into: ${bank.value}\n${lines.join('\n')}\nTotal: ${K(total)}`;
+  const msg = `Hi Tiare's Five Fold Creations, I have paid for my order.\nTransaction reference: ${txn}\nAmount paid: K${amtText}\nName: ${name}\nPaid into: ${bank.value}\n${lines.join('\n')}\nTotal: ${K(total)}\nSuggested pickup: ${pickupText(sug)}`;
   const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
 
   const btn = document.getElementById('cartPaid');
@@ -747,18 +795,39 @@ async function cartSendWhatsApp() {
     p_bank: bank.value,
     p_amount: amount,
     p_txn: txn,
-    p_items: cart.map(l => ({ sku: l.sku, design: l.design, size: l.size, qty: l.qty, price: l.price }))
+    p_items: cart.map(l => ({ sku: l.sku, design: l.design, size: l.size, qty: l.qty, price: l.price })),
+    p_suggested: ymd(sug)
   });
   if (w) w.location = waUrl; else window.location = waUrl;
   btn.disabled = false;
   hint.textContent = error
     ? 'Your order could not be saved online, but you can still send it on WhatsApp.'
-    : 'Order saved. Send the WhatsApp message to confirm it with us.';
+    : 'Order saved. Suggested pickup: ' + pickupText(sug) + '. Send the WhatsApp message to confirm with us.';
 }
 
 updateCartCount();
 loadCatalogue();
 </script>
+
+<section id="policy" class="alt">
+  <div class="wrap">
+    <p class="eyebrow">Payment, processing &amp; delivery</p>
+    <h2>How your order works</h2>
+    <div class="cards">
+      <div class="card"><h3>1. Shop and pay</h3><p>Add designs to your cart and checkout. Pay the total into our BSP or Kina Bank account by mobile or internet banking, using your full name as the payment description. Then enter your receipt reference and the amount you paid.</p></div>
+      <div class="card"><h3>2. We make your order</h3><p>Customised orders usually take 1 to 2 weeks, depending on how many items you order.</p></div>
+      <div class="card"><h3>3. Pickup or delivery</h3><p>Delivery days are Fridays and Saturdays. At checkout we suggest a pickup date for your order.</p></div>
+    </div>
+    <p class="intro"><b>Need it urgently?</b> If you are travelling or need your order sooner, WhatsApp us on 76628003 with your order reference and details, so we can prioritise it.</p>
+    <h3>Track your order</h3>
+    <form id="trackForm" class="track-form" onsubmit="trackOrder(event)">
+      <input id="trackName" type="text" placeholder="Full name used on the order" required>
+      <input id="trackTxn" type="text" placeholder="Receipt reference number" required>
+      <button class="btn primary" type="submit">Check status</button>
+    </form>
+    <div id="trackResult" class="intro"></div>
+  </div>
+</section>
 
 <footer>
   <div class="wrap">
