@@ -727,7 +727,7 @@ function cartSendWhatsApp() {
   const bank = document.querySelector('input[name="cartBank"]:checked');
   if (!cart.length || name.length < 2 || !bank) return;
   const ref = getOrderRef();
-  const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)`);
+  const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
   const msg = `Hi Tiare's Five Fold Creations, I have placed order ${ref} and paid.\nName: ${name}\n${lines.join('\n')}\nTotal: ${K(total)}\nPaid into: ${bank.value}\nPayment description: ${name} ${ref}`;
   document.getElementById('cartHint').textContent = 'Opening WhatsApp. Send the message to confirm your order.';
