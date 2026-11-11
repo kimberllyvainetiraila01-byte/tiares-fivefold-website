@@ -159,6 +159,17 @@ footer b{color:var(--accent-soft)}
 .cart-total{font-weight:700;font-size:17px;margin:14px 0 4px;text-align:right}
 .cart-clear{display:block;margin:10px auto 0;background:none;border:0;color:#6b5f52;text-decoration:underline;cursor:pointer}
 .cart-empty{color:#4b4f47;text-align:center;padding:20px 0}
+
+/* checkout */
+.cart-note{font-size:14px;color:#4b4f47;margin:8px 0 0}
+.cart-input{width:100%;padding:10px;border:1px solid #cfc4b0;border-radius:6px;font-size:15px}
+.cart-acct{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.cart-acct b{display:block;font-size:13px;color:#4b4f47}
+.cart-acct span{font-size:18px;font-weight:700;letter-spacing:1px}
+.cart-acct button{background:var(--black);color:#fff;border:0;border-radius:6px;padding:8px 12px;cursor:pointer;font-weight:700}
+.cart-ref{font-size:20px;font-weight:700;letter-spacing:1px;color:var(--accent-dark)}
+.cart-desc{font-size:14px;background:#f5f2ec;border-radius:6px;padding:8px 10px;word-break:break-word}
+.cart-radios{display:flex;gap:18px;font-weight:600}
 </style>
 </head>
 <body>
@@ -573,11 +584,34 @@ function ensureCartModal() {
     <div class="pm-sheet" onclick="event.stopPropagation()">
       <button class="pm-x" onclick="cartClose()" aria-label="Close">&times;</button>
       <div class="pm-body">
-        <div class="pm-design">Your cart</div>
-        <div id="cartLines"></div>
-        <div class="cart-total" id="cartTotal"></div>
-        <button class="pm-wa" id="cartSend" disabled onclick="cartSendWhatsApp()">Order all on WhatsApp</button>
-        <button class="cart-clear" type="button" onclick="cartClear()">Clear cart</button>
+        <div id="cartView">
+          <div class="pm-design">Your cart</div>
+          <div id="cartLines"></div>
+          <div class="cart-total" id="cartTotal"></div>
+          <button class="pm-wa" id="cartSend" disabled onclick="cartCheckout()">Checkout</button>
+          <button class="cart-clear" type="button" onclick="cartClear()">Clear cart</button>
+        </div>
+        <div id="cartCheckoutView" hidden>
+          <div class="pm-design">Checkout</div>
+          <p class="cart-note">Make one payment for the total into either account below. Put your full name and your order reference in the payment description.</p>
+          <div class="pm-h">Your full name</div>
+          <input class="cart-input" id="cartName" type="text" placeholder="e.g. Mary Kila" autocomplete="name" oninput="updateCartCheckout()">
+          <div class="pm-h">Pay into either account</div>
+          <div class="cart-acct"><div><b>BSP</b><span>1010230389</span></div><button type="button" onclick="cartCopy('1010230389')">Copy</button></div>
+          <div class="cart-acct"><div><b>Kina Bank</b><span>36427011</span></div><button type="button" onclick="cartCopy('36427011')">Copy</button></div>
+          <div class="pm-h">Order reference</div>
+          <div class="cart-ref" id="cartRef"></div>
+          <div class="pm-h">Payment description</div>
+          <div class="cart-desc" id="cartDesc"></div>
+          <div class="pm-h">Which account did you pay into?</div>
+          <div class="cart-radios">
+            <label><input type="radio" name="cartBank" value="BSP" onchange="updateCartCheckout()"> BSP</label>
+            <label><input type="radio" name="cartBank" value="Kina Bank" onchange="updateCartCheckout()"> Kina Bank</label>
+          </div>
+          <button class="pm-wa" id="cartPaid" disabled onclick="cartSendWhatsApp()">I've paid, send my order on WhatsApp</button>
+          <button class="cart-clear" type="button" onclick="cartBack()">Back to cart</button>
+          <div class="pm-hint" id="cartHint"></div>
+        </div>
       </div>
     </div>`;
   document.body.appendChild(wrap);
@@ -585,8 +619,52 @@ function ensureCartModal() {
 
 function cartOpen() {
   ensureCartModal();
+  cartBack();
   renderCart();
   document.getElementById('cartModal').hidden = false;
+}
+
+function cartBack() {
+  document.getElementById('cartView').hidden = false;
+  document.getElementById('cartCheckoutView').hidden = true;
+  document.getElementById('cartHint').textContent = '';
+}
+
+function getOrderRef() {
+  let r = localStorage.getItem('tfc_order_ref');
+  if (!r) {
+    r = 'TFC-' + String(Math.floor(100000 + Math.random() * 900000));
+    localStorage.setItem('tfc_order_ref', r);
+  }
+  return r;
+}
+
+function cartCheckout() {
+  if (!loadCart().length) return;
+  ensureCartModal();
+  document.getElementById('cartView').hidden = true;
+  document.getElementById('cartCheckoutView').hidden = false;
+  document.getElementById('cartRef').textContent = getOrderRef();
+  updateCartCheckout();
+}
+
+function updateCartCheckout() {
+  const name = document.getElementById('cartName').value.trim();
+  const bank = document.querySelector('input[name="cartBank"]:checked');
+  const ref = getOrderRef();
+  document.getElementById('cartRef').textContent = ref;
+  document.getElementById('cartDesc').textContent = (name || 'Your full name') + ' ' + ref;
+  document.getElementById('cartPaid').disabled = !(name.length >= 2 && bank);
+}
+
+function cartCopy(num) {
+  const hint = document.getElementById('cartHint');
+  try {
+    navigator.clipboard.writeText(num).then(() => { hint.textContent = 'Copied ' + num; },
+      () => { hint.textContent = 'Account number: ' + num; });
+  } catch (e) {
+    hint.textContent = 'Account number: ' + num;
+  }
 }
 
 function cartClose(e) {
@@ -637,16 +715,21 @@ function cartRemove(i) {
 
 function cartClear() {
   saveCart([]);
+  localStorage.removeItem('tfc_order_ref');
   renderCart();
   updateCartCount();
 }
 
 function cartSendWhatsApp() {
   const cart = loadCart();
-  if (!cart.length) return;
+  const name = document.getElementById('cartName').value.trim();
+  const bank = document.querySelector('input[name="cartBank"]:checked');
+  if (!cart.length || name.length < 2 || !bank) return;
+  const ref = getOrderRef();
   const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)`);
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
-  const msg = `Hi Tiare's Five Fold Creations, I'd like to order:\n${lines.join('\n')}\nTotal: ${K(total)}`;
+  const msg = `Hi Tiare's Five Fold Creations, I have placed order ${ref} and paid.\nName: ${name}\n${lines.join('\n')}\nTotal: ${K(total)}\nPaid into: ${bank.value}\nPayment description: ${name} ${ref}`;
+  document.getElementById('cartHint').textContent = 'Opening WhatsApp. Send the message to confirm your order.';
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
 
