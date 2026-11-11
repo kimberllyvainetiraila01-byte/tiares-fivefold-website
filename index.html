@@ -139,6 +139,24 @@ footer b{color:var(--accent-soft)}
 .pm-wa{display:block;width:100%;margin-top:16px;background:#25d366;color:#fff;text-align:center;padding:13px;border:0;border-radius:8px;font-weight:700;font-size:16px;cursor:pointer}
 .pm-wa:disabled{background:#c9ccc9;cursor:not-allowed}
 .pm-hint{font-size:13px;color:#4b4f47;margin-top:6px;text-align:center}
+
+/* shopping cart */
+.cart-btn{margin-left:10px;background:none;border:1px solid var(--black);border-radius:999px;padding:6px 12px;cursor:pointer;font-weight:700;color:var(--black);font-size:14px}
+.cart-btn span{display:inline-block;background:var(--black);color:#fff;border-radius:999px;padding:0 7px;margin-left:4px;font-size:12px}
+.pm-add{display:block;width:100%;margin-top:16px;background:var(--black);color:#fff;text-align:center;padding:13px;border:0;border-radius:8px;font-weight:700;font-size:16px;cursor:pointer}
+.pm-add:disabled{background:#c9ccc9;cursor:not-allowed}
+.cart-line{display:flex;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding:10px 0;flex-wrap:wrap}
+.cart-line img{width:56px;height:56px;object-fit:cover;border-radius:6px;background:#eef0ea}
+.cart-line .cl-info{flex:1;min-width:140px;font-size:14px;color:#4b4f47}
+.cart-line .cl-info b{display:block;color:var(--black)}
+.cart-line .cl-ctl{display:flex;align-items:center;gap:6px}
+.cart-line .cl-ctl button{width:30px;height:30px;border:1px solid var(--black);background:#fff;border-radius:6px;cursor:pointer;font-weight:700}
+.cart-line .cl-ctl button:disabled{color:#bbb;border-color:#ccc;cursor:not-allowed}
+.cart-line .cl-ctl span{min-width:28px;text-align:center;font-weight:700}
+.cart-remove{background:none;border:0;padding:0;font-size:12px;text-decoration:underline;color:#6b5f52;cursor:pointer}
+.cart-total{font-weight:700;font-size:17px;margin:14px 0 4px;text-align:right}
+.cart-clear{display:block;margin:10px auto 0;background:none;border:0;color:#6b5f52;text-decoration:underline;cursor:pointer}
+.cart-empty{color:#4b4f47;text-align:center;padding:20px 0}
 </style>
 </head>
 <body>
@@ -151,6 +169,7 @@ footer b{color:var(--accent-soft)}
       <a href="#services">Services</a>
       <a href="#order">How to Order</a>
       <a href="#contact">Contact</a>
+      <button class="cart-btn" type="button" onclick="cartOpen()">Cart <span id="cartCount">0</span></button>
     </nav>
   </div>
 </header>
@@ -326,6 +345,8 @@ async function loadCatalogue() {
     groups = [...bySku.values()].filter(g => g.sizes.some(s => s.in_stock)).sort((a, b) =>
       LINE_ORDER.indexOf(a.line) - LINE_ORDER.indexOf(b.line) || skuNum(a.sku) - skuNum(b.sku));
     groups.forEach(g => g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true })));
+    reconcileCart();
+    updateCartCount();
     renderTabs();
     renderGrid();
   } catch (e) {
@@ -391,6 +412,7 @@ function ensureModal() {
           <span id="pmQtyN">1</span>
           <button type="button" id="pmPlus" onclick="pmQty(1)" aria-label="More">+</button>
         </div>
+        <button class="pm-add" id="pmAdd" disabled onclick="pmAddToCart()">Add to cart</button>
         <button class="pm-wa" id="pmWa" disabled onclick="pmSend()">Order on WhatsApp</button>
         <div class="pm-hint" id="pmHint">Tap a size first</div>
       </div>
@@ -441,15 +463,21 @@ function pmHighlight() {
   buttons.forEach((b, i) => b.classList.toggle('on', chosen === CUSTOM ? i === buttons.length - 1 : i === chosen));
 }
 
+function pmMax() {
+  return (cur && chosen >= 0 && chosen !== CUSTOM) ? Math.max(1, Math.min(20, curSizes[chosen].units)) : 20;
+}
+
 function pmQty(delta) {
-  qty = Math.min(20, Math.max(1, qty + delta));
+  qty = Math.min(pmMax(), Math.max(1, qty + delta));
   pmShowQty();
 }
 
 function pmShowQty() {
+  const max = pmMax();
+  if (qty > max) qty = max;
   document.getElementById('pmQtyN').textContent = qty;
   document.getElementById('pmMinus').disabled = qty <= 1;
-  document.getElementById('pmPlus').disabled = qty >= 20;
+  document.getElementById('pmPlus').disabled = qty >= max;
 }
 
 function pmUpdate() {
@@ -464,7 +492,10 @@ function pmUpdate() {
     hint = 'Size ' + curSizes[chosen].size + ' selected';
   }
   btn.disabled = !ready;
+  document.getElementById('pmAdd').disabled = !(chosen >= 0 && chosen !== CUSTOM && curSizes[chosen].in_stock);
+  if (chosen === CUSTOM) hint += '. Custom sizes are made to order, so please use Order on WhatsApp.';
   document.getElementById('pmHint').textContent = hint;
+  pmShowQty();
 }
 
 function pmSend() {
@@ -488,6 +519,136 @@ function pmClose(e) {
   cur = null;
 }
 
+// ---------- Shopping cart (kept in this browser) ----------
+const CART_KEY = 'tfc_cart';
+const loadCart = () => { try { return JSON.parse(localStorage.getItem(CART_KEY)) || []; } catch (e) { return []; } };
+const saveCart = c => { try { localStorage.setItem(CART_KEY, JSON.stringify(c)); } catch (e) {} };
+const sizeLabel = s => (s === 'One size' ? 'One size' : 'Size ' + s);
+
+function updateCartCount() {
+  const n = loadCart().reduce((t, l) => t + l.qty, 0);
+  const el = document.getElementById('cartCount');
+  if (el) el.textContent = n;
+}
+
+// Drop sold-out lines and cap quantities at the live stock
+function reconcileCart() {
+  const next = loadCart().map(l => {
+    const g = groups.find(x => x.sku === l.sku);
+    const sz = g && g.sizes.find(z => z.size === l.size);
+    if (!g || !sz || !sz.in_stock) return null;
+    return { ...l, design: g.design, price: g.price, photo_url: g.photo_url, units: sz.units, qty: Math.min(l.qty, sz.units) };
+  }).filter(Boolean);
+  saveCart(next);
+}
+
+function pmAddToCart() {
+  const sz = curSizes[chosen];
+  if (!cur || chosen < 0 || chosen === CUSTOM || !sz || !sz.in_stock) return;
+  const cart = loadCart();
+  const line = cart.find(l => l.sku === cur.sku && l.size === sz.size);
+  const have = line ? line.qty : 0;
+  const addQty = Math.min(qty, sz.units - have);
+  const hint = document.getElementById('pmHint');
+  if (addQty <= 0) { hint.textContent = 'Your cart already has all the available stock of this size.'; return; }
+  if (line) line.qty += addQty;
+  else cart.push({ sku: cur.sku, design: cur.design, price: cur.price, photo_url: cur.photo_url, size: sz.size, qty: addQty, units: sz.units });
+  saveCart(cart);
+  updateCartCount();
+  qty = 1;
+  pmShowQty();
+  hint.textContent = 'Added ' + addQty + ' to your cart. Open Cart to order.';
+}
+
+function ensureCartModal() {
+  if (document.getElementById('cartModal')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'cartModal';
+  wrap.className = 'pm-modal';
+  wrap.hidden = true;
+  wrap.onclick = cartClose;
+  wrap.innerHTML = `
+    <div class="pm-sheet" onclick="event.stopPropagation()">
+      <button class="pm-x" onclick="cartClose()" aria-label="Close">&times;</button>
+      <div class="pm-body">
+        <div class="pm-design">Your cart</div>
+        <div id="cartLines"></div>
+        <div class="cart-total" id="cartTotal"></div>
+        <button class="pm-wa" id="cartSend" disabled onclick="cartSendWhatsApp()">Order all on WhatsApp</button>
+        <button class="cart-clear" type="button" onclick="cartClear()">Clear cart</button>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+
+function cartOpen() {
+  ensureCartModal();
+  renderCart();
+  document.getElementById('cartModal').hidden = false;
+}
+
+function cartClose(e) {
+  if (e && e.target !== document.getElementById('cartModal')) return;
+  document.getElementById('cartModal').hidden = true;
+}
+
+function renderCart() {
+  const cart = loadCart();
+  const box = document.getElementById('cartLines');
+  if (!cart.length) {
+    box.innerHTML = '<p class="cart-empty">Your cart is empty. Open a design and choose Add to cart.</p>';
+  } else {
+    box.innerHTML = cart.map((l, i) => `
+      <div class="cart-line">
+        ${l.photo_url ? `<img src="${esc(l.photo_url)}" alt="">` : ''}
+        <div class="cl-info"><b>${esc(l.design)}</b>${esc(l.sku)} &middot; ${esc(sizeLabel(l.size))}<br>${K(l.price)} each</div>
+        <div class="cl-ctl">
+          <button type="button" onclick="cartChange(${i}, -1)" ${l.qty <= 1 ? 'disabled' : ''} aria-label="Less">&minus;</button>
+          <span>${l.qty}</span>
+          <button type="button" onclick="cartChange(${i}, 1)" ${l.qty >= l.units ? 'disabled' : ''} aria-label="More">+</button>
+        </div>
+        <button class="cart-remove" type="button" onclick="cartRemove(${i})">Remove</button>
+      </div>`).join('');
+  }
+  const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
+  document.getElementById('cartTotal').textContent = cart.length ? 'Total: ' + K(total) : '';
+  document.getElementById('cartSend').disabled = !cart.length;
+}
+
+function cartChange(i, d) {
+  const cart = loadCart();
+  const l = cart[i];
+  if (!l) return;
+  l.qty = Math.min(l.units, Math.max(1, l.qty + d));
+  saveCart(cart);
+  renderCart();
+  updateCartCount();
+}
+
+function cartRemove(i) {
+  const cart = loadCart();
+  cart.splice(i, 1);
+  saveCart(cart);
+  renderCart();
+  updateCartCount();
+}
+
+function cartClear() {
+  saveCart([]);
+  renderCart();
+  updateCartCount();
+}
+
+function cartSendWhatsApp() {
+  const cart = loadCart();
+  if (!cart.length) return;
+  const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)`);
+  const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
+  const msg = `Hi Tiare's Five Fold Creations, I'd like to order:\n${lines.join('\n')}\nTotal: ${K(total)}`;
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+
+updateCartCount();
 loadCatalogue();
 </script>
 
