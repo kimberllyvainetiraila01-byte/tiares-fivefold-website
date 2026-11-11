@@ -166,6 +166,7 @@ footer b{color:var(--accent-soft)}
 .cart-acct{display:flex;justify-content:space-between;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin-bottom:8px}
 .cart-acct b{display:block;font-size:13px;color:#4b4f47}
 .cart-acct span{font-size:18px;font-weight:700;letter-spacing:1px}
+.cart-acct small{display:block;font-size:13px;color:#4b4f47;margin-top:2px}
 .cart-acct button{background:var(--black);color:#fff;border:0;border-radius:6px;padding:8px 12px;cursor:pointer;font-weight:700}
 .cart-ref{font-size:20px;font-weight:700;letter-spacing:1px;color:var(--accent-dark)}
 .cart-desc{font-size:14px;background:#f5f2ec;border-radius:6px;padding:8px 10px;word-break:break-word}
@@ -593,12 +594,12 @@ function ensureCartModal() {
         </div>
         <div id="cartCheckoutView" hidden>
           <div class="pm-design">Checkout</div>
-          <p class="cart-note">Make one payment for the total into either account below. Put your full name and your order reference in the payment description.</p>
+          <p class="cart-note">Make one payment for the total into either account below, by mobile banking or internet banking. Put your full name and your order reference in the payment description. Questions? WhatsApp us on 76628003.</p>
           <div class="pm-h">Your full name</div>
           <input class="cart-input" id="cartName" type="text" placeholder="e.g. Mary Kila" autocomplete="name" oninput="updateCartCheckout()">
           <div class="pm-h">Pay into either account</div>
-          <div class="cart-acct"><div><b>BSP</b><span>1010230389</span></div><button type="button" onclick="cartCopy('1010230389')">Copy</button></div>
-          <div class="cart-acct"><div><b>Kina Bank</b><span>36427011</span></div><button type="button" onclick="cartCopy('36427011')">Copy</button></div>
+          <div class="cart-acct"><div><b>BSP</b><span>1010230389</span><small>Account name: Raga Leana</small></div><button type="button" onclick="cartCopy('1010230389')">Copy</button></div>
+          <div class="cart-acct"><div><b>Kina Bank</b><span>36427011</span><small>Account name: Raga Leana</small></div><button type="button" onclick="cartCopy('36427011')">Copy</button></div>
           <div class="pm-h">Order reference</div>
           <div class="cart-ref" id="cartRef"></div>
           <div class="pm-h">Payment description</div>
