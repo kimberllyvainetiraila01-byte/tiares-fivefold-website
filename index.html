@@ -802,7 +802,7 @@ async function cartSendWhatsApp() {
   btn.disabled = false;
   hint.textContent = error
     ? 'Your order could not be saved online, but you can still send it on WhatsApp.'
-    : 'Order saved. Suggested pickup: ' + pickupText(sug) + '. Send the WhatsApp message to confirm with us.';
+    : 'Order saved. Suggested pickup: ' + pickupText(sug) + '. Please wait 30 minutes or more for your payment to be confirmed. Send the WhatsApp message to confirm with us.';
 }
 
 updateCartCount();
