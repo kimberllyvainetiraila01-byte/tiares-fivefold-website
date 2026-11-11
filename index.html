@@ -594,16 +594,14 @@ function ensureCartModal() {
         </div>
         <div id="cartCheckoutView" hidden>
           <div class="pm-design">Checkout</div>
-          <p class="cart-note">Make one payment for the total into either account below, by mobile banking or internet banking. Put your full name and your order reference in the payment description. Questions? WhatsApp us on 76628003.</p>
+          <p class="cart-note">Make one payment for the total into either account below, by mobile banking or internet banking. Put your full name in the payment description. After paying, enter the transaction reference number from your banking receipt. Questions? WhatsApp us on 76628003.</p>
           <div class="pm-h">Your full name</div>
           <input class="cart-input" id="cartName" type="text" placeholder="e.g. Mary Kila" autocomplete="name" oninput="updateCartCheckout()">
-          <div class="pm-h">Bank reference number (from your receipt)</div>
-          <input class="cart-input" id="cartTxn" type="text" placeholder="e.g. the transaction number" autocomplete="off">
+          <div class="pm-h">Transaction reference number (from your mobile or internet banking receipt)</div>
+          <input class="cart-input" id="cartTxn" type="text" placeholder="e.g. the transaction number" autocomplete="off" oninput="updateCartCheckout()">
           <div class="pm-h">Pay into either account</div>
           <div class="cart-acct"><div><b>BSP</b><span>1010230389</span><small>Account name: Raga Leana</small></div><button type="button" onclick="cartCopy('1010230389')">Copy</button></div>
           <div class="cart-acct"><div><b>Kina Bank</b><span>36427011</span><small>Account name: Raga Leana</small></div><button type="button" onclick="cartCopy('36427011')">Copy</button></div>
-          <div class="pm-h">Order reference</div>
-          <div class="cart-ref" id="cartRef"></div>
           <div class="pm-h">Payment description</div>
           <div class="cart-desc" id="cartDesc"></div>
           <div class="pm-h">Which account did you pay into?</div>
@@ -645,17 +643,15 @@ function cartCheckout() {
   ensureCartModal();
   document.getElementById('cartView').hidden = true;
   document.getElementById('cartCheckoutView').hidden = false;
-  document.getElementById('cartRef').textContent = getOrderRef();
   updateCartCheckout();
 }
 
 function updateCartCheckout() {
   const name = document.getElementById('cartName').value.trim();
+  const txn = document.getElementById('cartTxn').value.trim();
   const bank = document.querySelector('input[name="cartBank"]:checked');
-  const ref = getOrderRef();
-  document.getElementById('cartRef').textContent = ref;
-  document.getElementById('cartDesc').textContent = (name || 'Your full name') + ' ' + ref;
-  document.getElementById('cartPaid').disabled = !(name.length >= 2 && bank);
+  document.getElementById('cartDesc').textContent = name || 'Your full name';
+  document.getElementById('cartPaid').disabled = !(name.length >= 2 && bank && txn.length >= 4);
 }
 
 function cartCopy(num) {
@@ -724,12 +720,12 @@ function cartClear() {
 function cartSendWhatsApp() {
   const cart = loadCart();
   const name = document.getElementById('cartName').value.trim();
+  const txn = document.getElementById('cartTxn').value.trim();
   const bank = document.querySelector('input[name="cartBank"]:checked');
-  if (!cart.length || name.length < 2 || !bank) return;
-  const ref = getOrderRef();
+  if (!cart.length || name.length < 2 || txn.length < 4 || !bank) return;
   const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
-  const msg = `Hi Tiare's Five Fold Creations, I have placed order ${ref} and paid.\nName: ${name}\n${lines.join('\n')}\nTotal: ${K(total)}\nPaid into: ${bank.value}\nBank reference: ${document.getElementById('cartTxn').value.trim() || 'not given'}\nPayment description: ${name} ${ref}`;
+  const msg = `Hi Tiare's Five Fold Creations, I have paid for my order.\nTransaction reference: ${txn}\nName: ${name}\nPaid into: ${bank.value}\n${lines.join('\n')}\nTotal: ${K(total)}`;
   document.getElementById('cartHint').textContent = 'Opening WhatsApp. Send the message to confirm your order.';
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
