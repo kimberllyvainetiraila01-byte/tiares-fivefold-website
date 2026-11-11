@@ -597,6 +597,8 @@ function ensureCartModal() {
           <p class="cart-note">Make one payment for the total into either account below, by mobile banking or internet banking. Put your full name in the payment description. After paying, enter the transaction reference number from your banking receipt. Questions? WhatsApp us on 76628003.</p>
           <div class="pm-h">Your full name</div>
           <input class="cart-input" id="cartName" type="text" placeholder="e.g. Mary Kila" autocomplete="name" oninput="updateCartCheckout()">
+          <div class="pm-h">Amount you paid (K)</div>
+          <input class="cart-input" id="cartAmt" type="text" inputmode="decimal" placeholder="e.g. 150.00" autocomplete="off" oninput="updateCartCheckout()">
           <div class="pm-h">Transaction reference number (from your mobile or internet banking receipt)</div>
           <input class="cart-input" id="cartTxn" type="text" placeholder="e.g. the transaction number" autocomplete="off" oninput="updateCartCheckout()">
           <div class="pm-h">Pay into either account</div>
@@ -651,7 +653,8 @@ function updateCartCheckout() {
   const txn = document.getElementById('cartTxn').value.trim();
   const bank = document.querySelector('input[name="cartBank"]:checked');
   document.getElementById('cartDesc').textContent = name || 'Your full name';
-  document.getElementById('cartPaid').disabled = !(name.length >= 2 && bank && txn.length >= 4);
+  const amt = parseFloat(document.getElementById('cartAmt').value.replace(/,/g, ''));
+  document.getElementById('cartPaid').disabled = !(name.length >= 2 && bank && txn.length >= 4 && amt > 0);
 }
 
 function cartCopy(num) {
@@ -721,11 +724,12 @@ function cartSendWhatsApp() {
   const cart = loadCart();
   const name = document.getElementById('cartName').value.trim();
   const txn = document.getElementById('cartTxn').value.trim();
+  const amtText = document.getElementById('cartAmt').value.trim();
   const bank = document.querySelector('input[name="cartBank"]:checked');
-  if (!cart.length || name.length < 2 || txn.length < 4 || !bank) return;
+  if (!cart.length || name.length < 2 || txn.length < 4 || !(parseFloat(amtText.replace(/,/g, '')) > 0) || !bank) return;
   const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
-  const msg = `Hi Tiare's Five Fold Creations, I have paid for my order.\nTransaction reference: ${txn}\nName: ${name}\nPaid into: ${bank.value}\n${lines.join('\n')}\nTotal: ${K(total)}`;
+  const msg = `Hi Tiare's Five Fold Creations, I have paid for my order.\nTransaction reference: ${txn}\nAmount paid: K${amtText}\nName: ${name}\nPaid into: ${bank.value}\n${lines.join('\n')}\nTotal: ${K(total)}`;
   document.getElementById('cartHint').textContent = 'Opening WhatsApp. Send the message to confirm your order.';
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
