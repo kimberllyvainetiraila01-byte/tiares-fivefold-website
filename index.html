@@ -108,6 +108,36 @@ footer b{color:var(--accent-soft)}
   .top nav a{margin-left:12px;font-size:14px}
   section{padding:52px 0}
 }
+
+/* product view for the live catalogue */
+.pm-card{cursor:pointer}
+.pm-card:hover{border-color:var(--accent)}
+.pm-tap{font-size:12px;color:var(--accent-dark);margin-top:4px}
+.pm-modal{position:fixed;inset:0;background:rgba(40,34,28,.6);display:flex;align-items:center;justify-content:center;padding:12px;z-index:50}
+.pm-modal[hidden]{display:none}
+.pm-sheet{background:#fff;border-radius:12px;width:min(520px,100%);max-height:94vh;overflow:auto;position:relative}
+.pm-x{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;border:0;background:var(--black);color:#fff;font-size:22px;cursor:pointer;z-index:2}
+.pm-sheet img{width:100%;max-height:60vh;object-fit:contain;background:#eef0ea;display:block}
+.pm-body{padding:14px}
+.pm-design{font-size:19px;font-weight:700}
+.pm-code{font-size:13px;color:#4b4f47}
+.pm-price{font-size:17px;font-weight:700;margin-top:4px}
+.pm-h{font-weight:700;margin:14px 0 8px}
+.pm-sizes{display:flex;flex-wrap:wrap;gap:8px}
+.pm-size{min-width:58px;padding:10px 12px;border:1px solid var(--black);background:#fff;color:var(--black);border-radius:6px;font-weight:700;cursor:pointer;font-size:15px}
+.pm-size.on{background:var(--black);color:#fff}
+.pm-size.custom{border-style:dashed}
+.pm-custom{margin-top:14px}
+.pm-custom[hidden]{display:none}
+.pm-custom label{display:block;font-weight:700;margin-bottom:6px}
+.pm-custom input{width:100%;padding:10px;border:1px solid #cfc4b0;border-radius:6px;font-size:15px}
+.pm-qty{display:inline-flex;border:1px solid var(--black);border-radius:6px;overflow:hidden;align-items:center}
+.pm-qty button{width:44px;height:44px;border:0;background:#fff;font-size:22px;font-weight:700;cursor:pointer}
+.pm-qty button:disabled{color:#bbb;cursor:not-allowed}
+.pm-qty span{min-width:52px;text-align:center;font-size:18px;font-weight:700}
+.pm-wa{display:block;width:100%;margin-top:16px;background:#25d366;color:#fff;text-align:center;padding:13px;border:0;border-radius:8px;font-weight:700;font-size:16px;cursor:pointer}
+.pm-wa:disabled{background:#c9ccc9;cursor:not-allowed}
+.pm-hint{font-size:13px;color:#4b4f47;margin-top:6px;text-align:center}
 </style>
 </head>
 <body>
@@ -270,7 +300,11 @@ const LINE_ORDER = ['Handprinted Kolo', 'Normal Kolo', 'Jewelry'];
 const LINE_LABEL = { 'Handprinted Kolo': 'Handprinted Kolos', 'Normal Kolo': 'Normal Kolos', 'Jewelry': 'Jewelry' };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const K = n => 'K' + Number(n || 0).toLocaleString('en-PG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-let catItems = [], catLine = 'all';
+let groups = [], catLine = 'all';
+let cur = null, curSizes = [], chosen = -1, qty = 1;
+const WHATSAPP_NUMBER = '67576628003';
+const CUSTOM = -2;
+const skuNum = s => { const m = String(s || '').match(/(\d+)\s*$/); return m ? parseInt(m[1], 10) : 999999; };
 
 async function loadCatalogue() {
   const grid = document.getElementById('catGrid');
@@ -279,9 +313,17 @@ async function loadCatalogue() {
     // Public columns only: cost is deliberately not selected
     const { data, error } = await sb.from('public_catalogue')
       .select('line,sku,design,size,units,price,photo_url')
-            .order('line').order('sku');
+      .order('line').order('sku');
     if (error) throw error;
-    catItems = data || [];
+    // The view has one row per size, so group rows into one card per SKU
+    const bySku = new Map();
+    (data || []).forEach(r => {
+      if (!bySku.has(r.sku)) bySku.set(r.sku, { sku: r.sku, line: r.line, design: r.design, price: r.price, photo_url: r.photo_url, sizes: [] });
+      bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units });
+    });
+    groups = [...bySku.values()].sort((a, b) =>
+      LINE_ORDER.indexOf(a.line) - LINE_ORDER.indexOf(b.line) || skuNum(a.sku) - skuNum(b.sku));
+    groups.forEach(g => g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true })));
     renderTabs();
     renderGrid();
   } catch (e) {
@@ -290,11 +332,11 @@ async function loadCatalogue() {
 }
 
 function renderTabs() {
-  const lines = LINE_ORDER.filter(l => catItems.some(x => x.line === l));
+  const lines = LINE_ORDER.filter(l => groups.some(x => x.line === l));
   document.getElementById('catTabs').innerHTML =
-    `<button class="${catLine==='all'?'on':''}" onclick="pickLine('all')">All <span>${catItems.length}</span></button>` +
+    `<button class="${catLine==='all'?'on':''}" onclick="pickLine('all')">All <span>${groups.length}</span></button>` +
     lines.map(l => {
-      const c = catItems.filter(x => x.line === l).length;
+      const c = groups.filter(x => x.line === l).length;
       return `<button class="${catLine===l?'on':''}" onclick="pickLine('${esc(l)}')">${esc(LINE_LABEL[l] || l)} <span>${c}</span></button>`;
     }).join('');
 }
@@ -302,20 +344,146 @@ function renderTabs() {
 function pickLine(l) { catLine = l; renderTabs(); renderGrid(); }
 
 function renderGrid() {
-  const list = catItems.filter(x => catLine === 'all' || x.line === catLine);
   const grid = document.getElementById('catGrid');
+  const list = groups.map((g, i) => ({ g, i })).filter(o => catLine === 'all' || o.g.line === catLine);
   if (!list.length) { grid.innerHTML = '<p class="muted">No designs are in stock in this line right now.</p>'; return; }
-  grid.innerHTML = list.map(x => `
-    <div class="item">
-      ${x.photo_url ? `<img src="${esc(x.photo_url)}" alt="${esc(x.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
+  grid.innerHTML = list.map(({ g, i }) => `
+    <div class="item pm-card" onclick="openItem(${i})">
+      ${g.photo_url ? `<img src="${esc(g.photo_url)}" alt="${esc(g.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
                     : `<div class="ph-empty">Photo coming soon</div>`}
       <div class="info">
-        <div class="code">${esc(x.sku)}</div>
-        <h3>${esc(x.design)}</h3>
-        <div class="meta">${x.size ? 'Size ' + esc(x.size) : 'One size'} &middot; ${x.units} in stock</div>
-        <div class="price">${K(x.price)}</div>
+        <div class="code">${esc(g.sku)}</div>
+        <h3>${esc(g.design)}</h3>
+        <div class="meta">Sizes: ${esc(g.sizes.map(s => s.size).join(', '))}</div>
+        <div class="price">${K(g.price)}</div>
+        <div class="pm-tap">Tap for sizes &amp; to order</div>
       </div>
     </div>`).join('');
+}
+
+// ---------- Product view with size choice and WhatsApp order ----------
+function ensureModal() {
+  if (document.getElementById('pmModal')) return;
+  const wrap = document.createElement('div');
+  wrap.id = 'pmModal';
+  wrap.className = 'pm-modal';
+  wrap.hidden = true;
+  wrap.onclick = pmClose;
+  wrap.innerHTML = `
+    <div class="pm-sheet" onclick="event.stopPropagation()">
+      <button class="pm-x" onclick="pmClose()" aria-label="Close">&times;</button>
+      <img id="pmImg" alt="">
+      <div class="pm-body">
+        <div class="pm-design" id="pmDesign"></div>
+        <div class="pm-code" id="pmCode"></div>
+        <div class="pm-price" id="pmPrice"></div>
+        <div class="pm-h">Choose a size</div>
+        <div class="pm-sizes" id="pmSizes"></div>
+        <div class="pm-custom" id="pmCustomWrap" hidden>
+          <label for="pmCustom">Type the size you want</label>
+          <input id="pmCustom" type="text" placeholder="e.g. 20" oninput="pmUpdate()" autocomplete="off">
+        </div>
+        <div class="pm-h">Quantity</div>
+        <div class="pm-qty">
+          <button type="button" id="pmMinus" onclick="pmQty(-1)" aria-label="Less">&minus;</button>
+          <span id="pmQtyN">1</span>
+          <button type="button" id="pmPlus" onclick="pmQty(1)" aria-label="More">+</button>
+        </div>
+        <button class="pm-wa" id="pmWa" disabled onclick="pmSend()">Order on WhatsApp</button>
+        <div class="pm-hint" id="pmHint">Tap a size first</div>
+      </div>
+    </div>`;
+  document.body.appendChild(wrap);
+}
+
+function openItem(i) {
+  ensureModal();
+  cur = groups[i];
+  if (!cur) return;
+  curSizes = cur.sizes;
+  chosen = -1;
+  qty = 1;
+  const img = document.getElementById('pmImg');
+  img.src = cur.photo_url || '';
+  img.style.display = cur.photo_url ? 'block' : 'none';
+  document.getElementById('pmDesign').textContent = cur.design;
+  document.getElementById('pmCode').textContent = 'Code: ' + cur.sku;
+  document.getElementById('pmPrice').textContent = K(cur.price);
+  document.getElementById('pmCustom').value = '';
+  document.getElementById('pmCustomWrap').hidden = true;
+  document.getElementById('pmSizes').innerHTML = curSizes.map((s, n) =>
+    `<button class="pm-size" onclick="pmPick(${n})">${esc(s.size)}</button>`).join('') +
+    `<button class="pm-size custom" onclick="pmCustomPick()">Custom size</button>`;
+  pmShowQty();
+  pmUpdate();
+  document.getElementById('pmModal').hidden = false;
+}
+
+function pmPick(n) {
+  chosen = n;
+  pmHighlight();
+  document.getElementById('pmCustomWrap').hidden = true;
+  pmUpdate();
+}
+
+function pmCustomPick() {
+  chosen = CUSTOM;
+  pmHighlight();
+  document.getElementById('pmCustomWrap').hidden = false;
+  document.getElementById('pmCustom').focus();
+  pmUpdate();
+}
+
+function pmHighlight() {
+  const buttons = document.querySelectorAll('#pmSizes .pm-size');
+  buttons.forEach((b, i) => b.classList.toggle('on', chosen === CUSTOM ? i === buttons.length - 1 : i === chosen));
+}
+
+function pmQty(delta) {
+  qty = Math.min(20, Math.max(1, qty + delta));
+  pmShowQty();
+}
+
+function pmShowQty() {
+  document.getElementById('pmQtyN').textContent = qty;
+  document.getElementById('pmMinus').disabled = qty <= 1;
+  document.getElementById('pmPlus').disabled = qty >= 20;
+}
+
+function pmUpdate() {
+  const btn = document.getElementById('pmWa');
+  const customText = document.getElementById('pmCustom').value.trim();
+  let ready = false, hint = 'Tap a size first';
+  if (chosen === CUSTOM) {
+    ready = customText.length > 0;
+    hint = ready ? 'Custom size: ' + customText.slice(0, 20) : 'Type the size you want';
+  } else if (chosen >= 0) {
+    ready = true;
+    hint = 'Size ' + curSizes[chosen].size + ' selected';
+  }
+  btn.disabled = !ready;
+  document.getElementById('pmHint').textContent = hint;
+}
+
+function pmSend() {
+  if (!cur || chosen === -1) return;
+  let sizeLine;
+  if (chosen === CUSTOM) {
+    const t = document.getElementById('pmCustom').value.trim();
+    if (!t) return;
+    sizeLine = 'custom size ' + t;
+  } else {
+    sizeLine = 'size ' + curSizes[chosen].size;
+  }
+  const msg = `Hi Tiare's Five Fold Creations, I'd like to order ${cur.sku} - ${cur.design}, ${sizeLine}, quantity ${qty}.` +
+    (cur.photo_url ? ` Photo: ${cur.photo_url}` : '');
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+}
+
+function pmClose(e) {
+  if (e && e.target !== document.getElementById('pmModal')) return;
+  document.getElementById('pmModal').hidden = true;
+  cur = null;
 }
 
 loadCatalogue();
