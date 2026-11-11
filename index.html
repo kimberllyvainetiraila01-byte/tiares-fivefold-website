@@ -173,9 +173,6 @@ footer b{color:var(--accent-soft)}
 .cart-radios{display:flex;gap:18px;font-weight:600}
 .track-form{display:flex;flex-wrap:wrap;gap:10px;margin:12px 0}
 .track-form input{flex:1;min-width:200px;padding:11px;border:1px solid #cfc4b0;border-radius:6px;font-size:15px}
-.gate{background:#fff;border:1px solid var(--line);border-radius:12px;padding:20px;max-width:680px}
-.gate h3{margin-top:0}
-.link-btn{background:none;border:0;padding:0;color:var(--accent-dark);text-decoration:underline;cursor:pointer;font:inherit}
 </style>
 </head>
 <body>
@@ -348,13 +345,9 @@ const skuNum = s => { const m = String(s || '').match(/(\d+)\s*$/); return m ? p
 async function loadCatalogue() {
   const grid = document.getElementById('catGrid');
   try {
-    const { data: sess } = await orderSb.auth.getSession();
-    const session = sess && sess.session;
-    if (!session) { showGate(); return; }
-    const { data: sub } = await orderSb.from('subscribers').select('active,email').maybeSingle();
-    if (!sub || !sub.active) { showPending(session.user.email); return; }
-    // Subscribers only: one row per size, live stock, no cost price
-    const { data, error } = await orderSb.from('subscriber_catalogue')
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Public columns only: cost is deliberately not selected
+    const { data, error } = await sb.from('public_catalogue_sizes')
       .select('line,sku,design,size,units,price,photo_url,in_stock')
       .order('line').order('sku');
     if (error) throw error;
@@ -727,66 +720,6 @@ function cartClear() {
   orderRef = '';
   renderCart();
   updateCartCount();
-}
-
-// ---------- Subscriber sign-in ----------
-const PAY_BLOCK = '<p>Pay the subscription into either account: <b>BSP 1010230389</b> or <b>Kina Bank 36427011</b> (account name Raga Leana), by mobile or internet banking, using your full name as the description.</p>';
-
-function showGate() {
-  document.getElementById('catTabs').innerHTML = '';
-  document.getElementById('catGrid').innerHTML = `
-    <div class="gate">
-      <h3>Subscribe to view our live catalogue</h3>
-      <p>1. Create your account below with your email.</p>
-      <p>2. ${PAY_BLOCK.replace('<p>', '').replace('</p>', '')}</p>
-      <p>3. WhatsApp us on 76628003 with your email and receipt reference. We activate your account once payment is confirmed.</p>
-      <form class="track-form" onsubmit="authSignUp(event)">
-        <input id="authEmail" type="email" placeholder="Email" required autocomplete="email">
-        <input id="authPass" type="password" placeholder="Password (at least 6 characters)" minlength="6" required autocomplete="new-password">
-        <button class="btn primary" type="submit">Create account</button>
-      </form>
-      <p class="intro">Already have an account? <button type="button" class="link-btn" onclick="authSignIn()">Sign in</button> with the email and password above.</p>
-      <p id="authMsg" class="intro"></p>
-    </div>`;
-}
-
-function showPending(email) {
-  document.getElementById('catTabs').innerHTML = '';
-  document.getElementById('catGrid').innerHTML = `
-    <div class="gate">
-      <h3>Your account is waiting for payment confirmation</h3>
-      ${PAY_BLOCK}
-      <p>Then WhatsApp us on 76628003 with your email (${esc(email)}) and your receipt reference. We will activate your account as soon as the payment is confirmed.</p>
-      <p><button type="button" class="btn primary" onclick="loadCatalogue()">Check again</button>
-      <button type="button" class="link-btn" onclick="authSignOut()">Sign out</button></p>
-    </div>`;
-}
-
-async function authSignUp(e) {
-  e.preventDefault();
-  const msg = document.getElementById('authMsg');
-  const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPass').value;
-  msg.textContent = 'Creating your account...';
-  const { data, error } = await orderSb.auth.signUp({ email, password });
-  if (error) { msg.textContent = error.message; return; }
-  if (data.session) { loadCatalogue(); return; }
-  msg.textContent = 'Account created. Check your email to confirm it, then sign in.';
-}
-
-async function authSignIn() {
-  const msg = document.getElementById('authMsg');
-  const email = document.getElementById('authEmail').value.trim();
-  const password = document.getElementById('authPass').value;
-  if (!email || !password) { msg.textContent = 'Enter your email and password first.'; return; }
-  const { error } = await orderSb.auth.signInWithPassword({ email, password });
-  if (error) { msg.textContent = error.message; return; }
-  loadCatalogue();
-}
-
-async function authSignOut() {
-  await orderSb.auth.signOut();
-  loadCatalogue();
 }
 
 // ---------- Pickup dates and order tracking ----------
