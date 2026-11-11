@@ -720,18 +720,40 @@ function cartClear() {
   updateCartCount();
 }
 
-function cartSendWhatsApp() {
+const orderSb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+async function cartSendWhatsApp() {
   const cart = loadCart();
   const name = document.getElementById('cartName').value.trim();
   const txn = document.getElementById('cartTxn').value.trim();
   const amtText = document.getElementById('cartAmt').value.trim();
+  const amount = parseFloat(amtText.replace(/,/g, ''));
   const bank = document.querySelector('input[name="cartBank"]:checked');
-  if (!cart.length || name.length < 2 || txn.length < 4 || !(parseFloat(amtText.replace(/,/g, '')) > 0) || !bank) return;
+  if (!cart.length || name.length < 2 || txn.length < 4 || !(amount > 0) || !bank) return;
+
   const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
   const msg = `Hi Tiare's Five Fold Creations, I have paid for my order.\nTransaction reference: ${txn}\nAmount paid: K${amtText}\nName: ${name}\nPaid into: ${bank.value}\n${lines.join('\n')}\nTotal: ${K(total)}`;
-  document.getElementById('cartHint').textContent = 'Opening WhatsApp. Send the message to confirm your order.';
-  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
+  const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
+
+  const btn = document.getElementById('cartPaid');
+  const hint = document.getElementById('cartHint');
+  btn.disabled = true;
+  hint.textContent = 'Saving your order...';
+  // Open the window now, while the click is still allowed to open it, then point it at WhatsApp
+  const w = window.open('about:blank', '_blank');
+  const { error } = await orderSb.rpc('submit_online_order', {
+    p_name: name,
+    p_bank: bank.value,
+    p_amount: amount,
+    p_txn: txn,
+    p_items: cart.map(l => ({ sku: l.sku, design: l.design, size: l.size, qty: l.qty, price: l.price }))
+  });
+  if (w) w.location = waUrl; else window.location = waUrl;
+  btn.disabled = false;
+  hint.textContent = error
+    ? 'Your order could not be saved online, but you can still send it on WhatsApp.'
+    : 'Order saved. Send the WhatsApp message to confirm it with us.';
 }
 
 updateCartCount();
