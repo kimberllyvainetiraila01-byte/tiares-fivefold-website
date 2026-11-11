@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Auna Tiare's Holdings Ltd: tailoring, clothing and jewelry in Waigani, Port Moresby.">
+<title>Auna Tiare's Holdings Ltd | Tailoring, Clothing and Jewelry | Port Moresby</title>
+<style>
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+:root{--accent:#b08d57;--accent-dark:#7d6138;--accent-soft:#efe4cf;--black:#1f1d1a;--hero:#f5efe3;--taupe:#3b3530;--bg:#faf7f1;--card:#fff;--line:#e6dfd0}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--black);line-height:1.6}
+a{color:inherit}
+.wrap{max-width:1100px;margin:0 auto;padding:0 20px}
+
+/* header */
+.top{background:var(--black);color:#fff;position:sticky;top:0;z-index:10;border-bottom:4px solid var(--accent)}
+.top .wrap{display:flex;align-items:center;justify-content:space-between;min-height:70px;flex-wrap:wrap;gap:10px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+.brand img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);background:#fff}
+.brand span{font-weight:700;letter-spacing:1.5px;color:var(--accent);font-size:17px}
+.top nav a{color:#fff;text-decoration:none;margin-left:18px;font-size:15px;font-weight:600}
+.top nav a:hover{color:var(--accent)}
+
+/* hero, styled after the business card */
+.hero{background:var(--hero);color:var(--black);border-bottom:1px solid var(--line);padding:80px 0 70px;position:relative;overflow:hidden}
+.hero-inner{display:flex;align-items:center;gap:40px;flex-wrap:wrap}
+.hero-logo{width:150px;height:150px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);background:#fff;flex:0 0 150px}
+.hero-text{flex:1;min-width:280px}
+.hero h1{font-size:44px;line-height:1.1;margin:0 0 12px;text-transform:uppercase;letter-spacing:1px;color:var(--black)}
+.hero .tagline{font-size:17px;font-weight:600;color:var(--black);margin:0 0 18px;background:var(--accent-soft);border:1px solid var(--accent);display:inline-block;padding:6px 14px;border-radius:4px}
+.hero p{font-size:18px;color:#4a463f;max-width:620px;margin:0 0 26px}
+.hero-details{background:#fff;color:var(--black);border:1px solid var(--accent);border-radius:8px;padding:12px 16px;margin:0 0 22px;display:inline-block;font-weight:600;font-size:15px;line-height:1.7}
+.hero-details a{color:var(--accent-dark)}
+.btn{display:inline-block;padding:13px 24px;border-radius:6px;font-weight:600;text-decoration:none;border:2px solid var(--black);margin-right:10px;margin-bottom:10px}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.dark{background:transparent;color:var(--black)}
+
+/* services strip */
+.services{background:var(--taupe);color:var(--accent-soft)}
+.services .wrap{display:flex;flex-wrap:wrap;justify-content:center;gap:10px 26px;padding-top:16px;padding-bottom:16px;font-weight:700;font-size:15px}
+
+/* sections */
+section{padding:68px 0}
+section.alt{background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.eyebrow{font-size:13px;letter-spacing:2px;text-transform:uppercase;color:var(--accent-dark);font-weight:700;margin:0 0 8px}
+h2{font-size:32px;margin:0 0 12px;line-height:1.2}
+.intro{color:#4b4f47;max-width:640px;margin:0 0 34px;font-size:17px}
+
+/* product cards */
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:20px}
+.card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--accent);border-radius:10px;padding:24px;display:flex;flex-direction:column}
+.card .mark{width:48px;height:48px;border-radius:50%;background:var(--accent-soft);border:1px solid var(--accent);color:var(--accent-dark);display:flex;align-items:center;justify-content:center;font-weight:700;margin-bottom:16px}
+.card h3{margin:0 0 8px;font-size:20px}
+.card p{margin:0;color:#4b4f47;font-size:15px}
+
+/* services list */
+.svc{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}
+.svc div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:20px;border-left:4px solid var(--accent)}
+.svc h3{margin:0 0 6px;font-size:18px}
+.svc p{margin:0;color:#4b4f47;font-size:15px}
+
+/* live catalogue */
+.cat-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+.cat-tabs button{padding:9px 16px;border:2px solid var(--black);background:#fff;border-radius:999px;cursor:pointer;font-weight:700;font-size:14px}
+.cat-tabs button.on{background:var(--black);color:#fff}
+.cat-tabs span{font-weight:400;font-size:12px;opacity:.75}
+.cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.item img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eef0ea;display:block}
+.item .ph-empty{width:100%;aspect-ratio:1/1;background:#eef0ea;display:flex;align-items:center;justify-content:center;color:#777;font-size:13px}
+.item .info{padding:12px 14px 14px}
+.item .code{font-size:12px;color:var(--accent-dark);font-weight:700;letter-spacing:.5px}
+.item h3{margin:4px 0 6px;font-size:16px;line-height:1.3}
+.item .meta{font-size:13px;color:#4b4f47}
+.item .price{font-size:18px;font-weight:700;margin-top:8px;display:inline-block;background:var(--accent-soft);padding:2px 8px;border-radius:4px}
+.muted{color:#666}
+
+/* made to measure */
+.custom{background:var(--black);color:#fff;border-radius:14px;padding:40px;display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:30px;align-items:center;border-bottom:3px solid var(--accent)}
+.custom h2{color:var(--accent-soft)}
+.custom p{color:#e5e7e1;margin:0}
+.custom ul{margin:0;padding-left:20px;color:#e5e7e1}
+.custom li{margin:6px 0}
+
+/* order steps */
+.steps{counter-reset:s;list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px}
+.steps li{counter-increment:s;background:var(--card);border-radius:10px;padding:22px;border:1px solid var(--line);position:relative;padding-top:58px}
+.steps li::before{content:counter(s);position:absolute;top:18px;left:18px;width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent-dark);border:1px solid var(--accent);font-weight:700;text-align:center;line-height:26px}
+.steps h3{margin:0 0 6px;font-size:17px}
+.steps p{margin:0;color:#4b4f47;font-size:15px}
+
+/* contact */
+.contact{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:24px;border-top:3px solid var(--accent)}
+.box h3{margin:0 0 8px;font-size:18px}
+.box p{margin:0;color:#4b4f47}
+.ph{background:#fff7d6;border:1px dashed #b8930a;border-radius:4px;padding:1px 6px;color:#6b5200;font-weight:600}
+
+footer{background:var(--taupe);color:#ddd5c4;padding:34px 0;font-size:14px}
+footer .wrap{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px}
+footer b{color:var(--accent-soft)}
+
+@media (max-width:640px){
+  .hero h1{font-size:30px}
+  h2{font-size:26px}
+  .hero-logo{width:110px;height:110px;flex-basis:110px}
+  .top nav a{margin-left:12px;font-size:14px}
+  section{padding:52px 0}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="images/logo.jpg" alt="Auna Tiare's Holdings logo"><span>AUNA TIARE'S HOLDINGS LTD</span></a>
+    <nav>
+      <a href="#catalogue">Catalogue</a>
+      <a href="#services">Services</a>
+      <a href="#order">How to Order</a>
+      <a href="#contact">Contact</a>
+    </nav>
+  </div>
+</header>
+
+<div id="top"></div>
+
+<div class="hero">
+  <div class="wrap hero-inner">
+    <img class="hero-logo" src="images/logo.jpg" alt="Auna Tiare's Holdings logo">
+    <div class="hero-text">
+      <h1>Auna Tiare's Holdings Ltd</h1>
+      <p class="tagline">Tailoring &middot; Clothing &middot; Jewelry</p>
+      <div class="hero-details">
+        <div>P.O. Box 2589, Vision City, 1131 Waigani, NCD</div>
+        <div>PH: 76628003 / 73606549</div>
+        <div>Email: <a href="mailto:atiaresholdings@gmail.com">atiaresholdings@gmail.com</a></div>
+      </div>
+      <p>Auna Tiares designs and sells clothing and accessories for everyday wear and special occasions. Every design can be made to your size and measurements.</p>
+      <a class="btn primary" href="#catalogue">See designs in stock</a>
+      <a class="btn dark" href="#contact">Contact us</a>
+    </div>
+  </div>
+</div>
+
+<div class="services">
+  <div class="wrap">
+    <span>Tailoring</span><span>Clothing</span><span>Jewelries</span>
+  </div>
+</div>
+
+<section id="catalogue">
+  <div class="wrap">
+    <p class="eyebrow">Live catalogue</p>
+    <h2>Designs in stock</h2>
+    <p class="intro">Items currently available, with prices in kina (K). Stock changes as items sell, so check with us before you order.</p>
+    <div class="cat-tabs" id="catTabs"></div>
+    <div class="cat-grid" id="catGrid"><p class="muted">Loading designs...</p></div>
+  </div>
+</section>
+
+<section id="products" class="alt">
+  <div class="wrap">
+    <p class="eyebrow">Our range</p>
+    <h2>Four product lines</h2>
+    <p class="intro">Our designs are grouped into product lines. Browse the designs above, or contact us about anything you don't see.</p>
+    <div class="cards">
+      <div class="card">
+        <div class="mark">HK</div>
+        <h3>Handprinted Kolos</h3>
+        <p>Kolos designed and printed by hand, with a look all their own.</p>
+      </div>
+      <div class="card">
+        <div class="mark">NK</div>
+        <h3>Normal Kolos</h3>
+        <p>Everyday kolos in a wide selection of designs and sizes.</p>
+      </div>
+      <div class="card">
+        <div class="mark">J</div>
+        <h3>Jewelry</h3>
+        <p>Accessories to finish off an outfit, sold by design and code.</p>
+      </div>
+      <div class="card">
+        <div class="mark">MS</div>
+        <h3>Men's Shirts</h3>
+        <p>Shirts for men, cut to fit and available in several sizes.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="services">
+  <div class="wrap">
+    <p class="eyebrow">What we do</p>
+    <h2>Services</h2>
+    <p class="intro">Visit us for tailoring, clothing and jewelry.</p>
+    <div class="svc">
+      <div><h3>Tailoring</h3><p>Custom tailoring to your measurements.</p></div>
+      <div><h3>Jewelries</h3><p>Accessories sold by design and code.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="custom" class="alt">
+  <div class="wrap">
+    <div class="custom">
+      <div>
+        <p class="eyebrow" style="color:var(--accent)">Made to measure</p>
+        <h2>Your size, not just ours</h2>
+        <p>If your size is not on the shelf, we can make the design to your measurements. Tell us what you need and we will confirm the details with you before we start.</p>
+      </div>
+      <div>
+        <ul>
+          <li>Every design can be made to your size</li>
+          <li>Custom sizes for both kolos and shirts</li>
+          <li>We confirm your measurements before we make the piece</li>
+          <li>Ask us about sold-out designs. We may be able to make them to your size</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="order">
+  <div class="wrap">
+    <p class="eyebrow">Ordering</p>
+    <h2>How to order</h2>
+    <p class="intro">Choose your design, your size and the quantity, then send us the details.</p>
+    <ol class="steps">
+      <li><h3>Choose your design</h3><p>Browse the designs above. Note the code of the design you like.</p></li>
+      <li><h3>Pick your size</h3><p>Choose a size from the list, or ask for a custom size with your measurements.</p></li>
+      <li><h3>Send your order</h3><p>Call, message, or email us with the design code, size and quantity.</p></li>
+      <li><h3>Confirm and pay</h3><p>We confirm availability and the total. You can pay in cash, by EFTPOS or by bank transfer.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="contact" class="alt">
+  <div class="wrap">
+    <p class="eyebrow">Contact</p>
+    <h2>Get in touch</h2>
+    <p class="intro">Call, message, or email us to ask about a design, check a size, or place an order.</p>
+    <div class="contact">
+      <div class="box">
+        <h3>Phone</h3>
+        <p>76628003 / 73606549</p>
+      </div>
+      <div class="box">
+        <h3>Email</h3>
+        <p><a href="mailto:atiaresholdings@gmail.com">atiaresholdings@gmail.com</a></p>
+      </div>
+      <div class="box">
+        <h3>Postal address</h3>
+        <p>P.O. Box 2589<br>Vision City, 1131<br>Waigani, NCD<br>Papua New Guinea</p>
+      </div>
+      <div class="box">
+        <h3>Opening hours</h3>
+        <p><span class="ph">[Days and hours]</span></p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://stuugtqvmcpyncfjkxqs.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_YEpj6532K7e1rXFit9sVTw_CRhpljVx';
+const LINE_ORDER = ['Handprinted Kolo', 'Normal Kolo', 'Jewelry'];
+const LINE_LABEL = { 'Handprinted Kolo': 'Handprinted Kolos', 'Normal Kolo': 'Normal Kolos', 'Jewelry': 'Jewelry' };
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const K = n => 'K' + Number(n || 0).toLocaleString('en-PG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+let catItems = [], catLine = 'all';
+
+async function loadCatalogue() {
+  const grid = document.getElementById('catGrid');
+  try {
+    const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // Public columns only: cost is deliberately not selected
+    const { data, error } = await sb.from('public_catalogue')
+      .select('line,sku,design,size,units,price,photo_url')
+            .order('line').order('sku');
+    if (error) throw error;
+    catItems = data || [];
+    renderTabs();
+    renderGrid();
+  } catch (e) {
+    grid.innerHTML = '<p class="muted">The catalogue is not available right now. Please try again later.</p>';
+  }
+}
+
+function renderTabs() {
+  const lines = LINE_ORDER.filter(l => catItems.some(x => x.line === l));
+  document.getElementById('catTabs').innerHTML =
+    `<button class="${catLine==='all'?'on':''}" onclick="pickLine('all')">All <span>${catItems.length}</span></button>` +
+    lines.map(l => {
+      const c = catItems.filter(x => x.line === l).length;
+      return `<button class="${catLine===l?'on':''}" onclick="pickLine('${esc(l)}')">${esc(LINE_LABEL[l] || l)} <span>${c}</span></button>`;
+    }).join('');
+}
+
+function pickLine(l) { catLine = l; renderTabs(); renderGrid(); }
+
+function renderGrid() {
+  const list = catItems.filter(x => catLine === 'all' || x.line === catLine);
+  const grid = document.getElementById('catGrid');
+  if (!list.length) { grid.innerHTML = '<p class="muted">No designs are in stock in this line right now.</p>'; return; }
+  grid.innerHTML = list.map(x => `
+    <div class="item">
+      ${x.photo_url ? `<img src="${esc(x.photo_url)}" alt="${esc(x.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
+                    : `<div class="ph-empty">Photo coming soon</div>`}
+      <div class="info">
+        <div class="code">${esc(x.sku)}</div>
+        <h3>${esc(x.design)}</h3>
+        <div class="meta">${x.size ? 'Size ' + esc(x.size) : 'One size'} &middot; ${x.units} in stock</div>
+        <div class="price">${K(x.price)}</div>
+      </div>
+    </div>`).join('');
+}
+
+loadCatalogue();
+</script>
+
+<footer>
+  <div class="wrap">
+    <div><b>AUNA TIARE'S HOLDINGS LTD</b><br>Tailoring, clothing and jewelry.<br>P.O. Box 2589, Vision City, Waigani, NCD.</div>
+    <div>All prices in kina (K).</div>
+  </div>
+</footer>
+
+</body>
+</html>
