@@ -597,6 +597,8 @@ function ensureCartModal() {
           <p class="cart-note">Make one payment for the total into either account below, by mobile banking or internet banking. Put your full name and your order reference in the payment description. Questions? WhatsApp us on 76628003.</p>
           <div class="pm-h">Your full name</div>
           <input class="cart-input" id="cartName" type="text" placeholder="e.g. Mary Kila" autocomplete="name" oninput="updateCartCheckout()">
+          <div class="pm-h">Bank reference number (from your receipt)</div>
+          <input class="cart-input" id="cartTxn" type="text" placeholder="e.g. the transaction number" autocomplete="off">
           <div class="pm-h">Pay into either account</div>
           <div class="cart-acct"><div><b>BSP</b><span>1010230389</span><small>Account name: Raga Leana</small></div><button type="button" onclick="cartCopy('1010230389')">Copy</button></div>
           <div class="cart-acct"><div><b>Kina Bank</b><span>36427011</span><small>Account name: Raga Leana</small></div><button type="button" onclick="cartCopy('36427011')">Copy</button></div>
@@ -631,17 +633,15 @@ function cartBack() {
   document.getElementById('cartHint').textContent = '';
 }
 
+let orderRef = '';
 function getOrderRef() {
-  let r = localStorage.getItem('tfc_order_ref');
-  if (!r) {
-    r = 'TFC-' + String(Math.floor(100000 + Math.random() * 900000));
-    localStorage.setItem('tfc_order_ref', r);
-  }
-  return r;
+  if (!orderRef) orderRef = 'TFC-' + String(Math.floor(100000 + Math.random() * 900000));
+  return orderRef;
 }
 
 function cartCheckout() {
   if (!loadCart().length) return;
+  orderRef = '';
   ensureCartModal();
   document.getElementById('cartView').hidden = true;
   document.getElementById('cartCheckoutView').hidden = false;
@@ -716,7 +716,7 @@ function cartRemove(i) {
 
 function cartClear() {
   saveCart([]);
-  localStorage.removeItem('tfc_order_ref');
+  orderRef = '';
   renderCart();
   updateCartCount();
 }
@@ -729,7 +729,7 @@ function cartSendWhatsApp() {
   const ref = getOrderRef();
   const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
-  const msg = `Hi Tiare's Five Fold Creations, I have placed order ${ref} and paid.\nName: ${name}\n${lines.join('\n')}\nTotal: ${K(total)}\nPaid into: ${bank.value}\nPayment description: ${name} ${ref}`;
+  const msg = `Hi Tiare's Five Fold Creations, I have placed order ${ref} and paid.\nName: ${name}\n${lines.join('\n')}\nTotal: ${K(total)}\nPaid into: ${bank.value}\nBank reference: ${document.getElementById('cartTxn').value.trim() || 'not given'}\nPayment description: ${name} ${ref}`;
   document.getElementById('cartHint').textContent = 'Opening WhatsApp. Send the message to confirm your order.';
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
