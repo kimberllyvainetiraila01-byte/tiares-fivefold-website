@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=Cormorant+Garamond:wght@500;600;700&family=Great+Vibes&family=Jost:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Great+Vibes&family=Jost:wght@400;500;600;700&display=swap">
 <meta name="description" content="Tiare's Five Fold Creations: tailoring, clothing and jewelry in Waigani, Port Moresby.">
 <title>Tiare's Five Fold Creations | Tailoring, Clothing and Jewelry | Port Moresby</title>
 <style>
@@ -23,9 +23,10 @@ a{color:inherit}
 .brand img{width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid var(--accent);background:#fff}
 /* elegant serif for the business name and headings; Jost for everything else */
 h1,h2,h3,.pm-design{font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif}
-/* company name: "Tiare's" in script, "Five Fold Creations" in classic Roman capitals */
-.brand span,footer b{font-family:"Cinzel",Georgia,"Times New Roman",serif;font-weight:600;letter-spacing:.1em}
-.brand span{color:var(--accent);font-size:18px;line-height:1.2}
+/* company name: "Tiare's" in script, the rest in the elegant serif, not all capitals */
+.brand span,footer b{font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;font-weight:700;letter-spacing:.02em}
+.brand span{color:var(--accent);font-size:23px;line-height:1.15}
+footer b{font-size:20px}
 .top nav a{color:#fff;text-decoration:none;margin-left:18px;font-size:15px;font-weight:600}
 .top nav a:hover{color:var(--accent)}
 
@@ -36,7 +37,7 @@ h1,h2,h3,.pm-design{font-family:"Cormorant Garamond",Georgia,"Times New Roman",s
 .hero-logo{width:96px;height:96px;border-radius:50%;object-fit:cover;border:3px solid var(--accent);background:#fff;display:block;margin:0 0 18px}
 .hero h1{margin:0 0 18px;line-height:1;color:var(--black)}
 .hero h1 .bn-script{display:block;font-family:"Great Vibes","Brush Script MT",cursive;font-weight:400;font-size:84px;line-height:.95;color:var(--accent-dark)}
-.hero h1 .bn-caps{display:block;font-family:"Cinzel",Georgia,"Times New Roman",serif;font-weight:600;font-size:30px;letter-spacing:.14em;text-transform:uppercase;margin-top:4px}
+.hero h1 .bn-name{display:block;font-family:"Cormorant Garamond",Georgia,"Times New Roman",serif;font-weight:600;font-size:44px;letter-spacing:.02em;line-height:1.05;margin-top:2px}
 .hero .tagline{font-size:17px;font-weight:600;color:var(--black);margin:0 0 18px;background:var(--accent-soft);border:1px solid var(--accent);display:inline-block;padding:6px 14px;border-radius:4px}
 .hero p{font-size:18px;color:#4a463f;max-width:560px;margin:0 0 26px}
 .hero-details{background:#fff;color:var(--black);border:1px solid var(--accent);border-radius:8px;padding:12px 16px;margin:0 0 22px;display:inline-block;font-weight:600;font-size:15px;line-height:1.7}
@@ -121,7 +122,7 @@ footer b{color:var(--accent-soft)}
 @media (max-width:640px){
   h2{font-size:32px}
   .hero h1 .bn-script{font-size:64px}
-  .hero h1 .bn-caps{font-size:21px}
+  .hero h1 .bn-name{font-size:34px}
   .hero-logo{width:80px;height:80px}
   .top nav a{margin-left:12px;font-size:14px}
   section{padding:52px 0}
@@ -197,7 +198,7 @@ footer b{color:var(--accent-soft)}
 
 <header class="top">
   <div class="wrap">
-    <a class="brand" href="#top"><img src="images/logo.jpg" alt="Tiare's Five Fold Creations logo"><span>TIARE'S FIVE FOLD CREATIONS</span></a>
+    <a class="brand" href="#top"><img src="images/logo.jpg" alt="Tiare's Five Fold Creations logo"><span>Tiare's Five Fold Creations</span></a>
     <nav>
       <a href="#catalogue">Catalogue</a>
       <a href="#services">Services</a>
@@ -213,7 +214,7 @@ footer b{color:var(--accent-soft)}
 <div class="hero">
   <div class="hero-text">
     <img class="hero-logo" src="images/logo.jpg" alt="Tiare's Five Fold Creations logo">
-    <h1><span class="bn-script">Tiare's</span> <span class="bn-caps">Five Fold Creations</span></h1>
+    <h1><span class="bn-script">Tiare's</span> <span class="bn-name">Five Fold Creations</span></h1>
     <p class="tagline">Tailoring &middot; Clothing &middot; Jewelry</p>
     <div class="hero-details">
       <div>P.O. Box 2589, Vision City, 1131 Waigani, NCD</div>
@@ -851,7 +852,7 @@ loadCatalogue();
 
 <footer>
   <div class="wrap">
-    <div><b>TIARE'S FIVE FOLD CREATIONS</b><br>Tailoring, clothing and jewelry.<br>P.O. Box 2589, Vision City, Waigani, NCD.</div>
+    <div><b>Tiare's Five Fold Creations</b><br>Tailoring, clothing and jewelry.<br>P.O. Box 2589, Vision City, Waigani, NCD.</div>
     <div>All prices in kina (K).</div>
   </div>
 </footer>
