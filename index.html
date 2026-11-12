@@ -380,9 +380,35 @@ const COLOUR_RE = /\b(red|blue|black|white|gold|golden|silver|pink|purple|green|
 const isColour = v => v !== 'One size' && COLOUR_RE.test(String(v || ''));
 const optWord = g => (g.sizes.some(s => s.size !== 'One size') && g.sizes.every(s => s.size === 'One size' || isColour(s.size))) ? 'Colour' : 'Size';
 
+// Website-only groupings: separate stock codes shown to customers as one design with colour choices.
+// The inventory keeps the separate codes, and carts and orders still use them.
+const productImg = f => new URL('images/products/' + f, location.href).href;
+const COMBINE = [
+  { sku: 'HCFWPB-001', line: 'Jewelry', design: 'Freshwater pearl bracelet, adjustable',
+    extra: [{ url: productImg('HCFWPB-group.jpg'), labels: ['All colours'] }],
+    parts: [
+      { sku: 'HCFWPBWG-001', match: /white/i, colour: 'White', photo: productImg('HCFWPBWG-001.jpg') },
+      { sku: 'HCFWPBWG-001', match: /black/i, colour: 'Black', photo: productImg('HCFWPB-black.jpg') },
+      { sku: 'HCFWPBPTG-002', colour: 'Pink', photo: productImg('HCFWPBPTG-002.jpg') },
+      { sku: 'HCFWPBMC-003', colour: 'Mixed', photo: productImg('HCFWPBMC-003.jpg') }
+    ] }
+];
+function combineFor(r) {
+  for (const c of COMBINE) {
+    const part = c.parts.find(pt => pt.sku === r.sku && (!pt.match || pt.match.test(r.design || '')));
+    if (part) return { c, part };
+  }
+  return null;
+}
+// The stock code, size, design and price behind an option (combined options carry their own)
+const optSku = (g, s) => s.sku || g.sku;
+const optSize = s => s.rsize || s.size;
+const optDesign = (g, s) => s.design || g.design;
+const optPrice = (g, s) => (s.price ?? g.price);
+
 // One slide per different photo, labelled with the options shown in it
 function slidesFor(g) {
-  const out = [];
+  const out = (g.extra || []).map(x => ({ url: x.url, labels: [...x.labels] }));
   g.sizes.forEach(s => {
     if (!s.photo) return;
     let sl = out.find(x => x.url === s.photo);
@@ -404,6 +430,16 @@ async function loadCatalogue() {
     // The view has one row per size, so group rows into one card per SKU
     const bySku = new Map();
     (data || []).forEach(r => {
+      const cm = combineFor(r);
+      if (cm) {
+        const { c, part } = cm;
+        if (!bySku.has(c.sku)) bySku.set(c.sku, { sku: c.sku, line: c.line, design: c.design, price: r.price, photo_url: '', extra: c.extra, sizes: [] });
+        const g = bySku.get(c.sku);
+        g.price = Math.min(g.price, r.price);
+        g.sizes.push({ size: part.colour, units: r.units, in_stock: !!r.in_stock, photo: part.photo || r.photo_url || '',
+                       sku: r.sku, rsize: r.size || 'One size', design: r.design, price: r.price });
+        return;
+      }
       if (!bySku.has(r.sku)) bySku.set(r.sku, { sku: r.sku, line: r.line, design: r.design, price: r.price, photo_url: r.photo_url, sizes: [] });
       bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units, in_stock: !!r.in_stock, photo: r.photo_url || '' });
     });
@@ -414,9 +450,9 @@ async function loadCatalogue() {
       g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true }));
       g.opt = optWord(g);
       g.slides = slidesFor(g);
-      // Card photo: the first in-stock option that has a photo
+      // Card photo: a group photo if there is one, else the first in-stock option that has a photo
       const first = g.sizes.find(s => s.in_stock && s.photo) || g.sizes.find(s => s.photo);
-      g.photo_url = first ? first.photo : g.photo_url;
+      g.photo_url = (g.extra && g.extra.length) ? g.extra[0].url : first ? first.photo : g.photo_url;
     });
     reconcileCart();
     updateCartCount();
@@ -624,6 +660,9 @@ function pmUpdate() {
   }
   btn.disabled = !ready;
   document.getElementById('pmAdd').disabled = !(chosen >= 0 && chosen !== CUSTOM && curSizes[chosen].in_stock);
+  const o = chosen >= 0 ? curSizes[chosen] : null;
+  document.getElementById('pmCode').textContent = 'Code: ' + (o ? optSku(cur, o) : cur.sku);
+  document.getElementById('pmPrice').textContent = K(o ? optPrice(cur, o) : cur.price);
   if (chosen === CUSTOM) hint += '. Custom sizes are made to order, so please use Order on WhatsApp.';
   document.getElementById('pmHint').textContent = hint;
   pmShowQty();
@@ -639,7 +678,8 @@ function pmSend() {
   } else {
     sizeLine = cur.opt.toLowerCase() + ' ' + curSizes[chosen].size;
   }
-  const msg = `Hi Tiare's Five Fold Creations, I'd like to order ${cur.sku} - ${cur.design}, ${sizeLine}, quantity ${qty}.` +
+  const o = chosen >= 0 ? curSizes[chosen] : {};
+  const msg = `Hi Tiare's Five Fold Creations, I'd like to order ${optSku(cur, o)} - ${optDesign(cur, o)}, ${sizeLine}, quantity ${qty}.` +
     ((chosen >= 0 && curSizes[chosen].photo) || cur.photo_url ? ` Photo: ${(chosen >= 0 && curSizes[chosen].photo) || cur.photo_url}` : '');
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
@@ -665,10 +705,13 @@ function updateCartCount() {
 // Drop sold-out lines and cap quantities at the live stock
 function reconcileCart() {
   const next = loadCart().map(l => {
-    const g = groups.find(x => x.sku === l.sku);
-    const sz = g && g.sizes.find(z => z.size === l.size);
+    let g = null, sz = null;
+    for (const x of groups) {
+      sz = x.sizes.find(z => optSku(x, z) === l.sku && optSize(z) === l.size);
+      if (sz) { g = x; break; }
+    }
     if (!g || !sz || !sz.in_stock) return null;
-    return { ...l, design: g.design, price: g.price, photo_url: sz.photo || g.photo_url, units: sz.units, qty: Math.min(l.qty, sz.units) };
+    return { ...l, design: optDesign(g, sz), price: optPrice(g, sz), photo_url: sz.photo || g.photo_url, label: sz.size, units: sz.units, qty: Math.min(l.qty, sz.units) };
   }).filter(Boolean);
   saveCart(next);
 }
@@ -677,13 +720,14 @@ function pmAddToCart() {
   const sz = curSizes[chosen];
   if (!cur || chosen < 0 || chosen === CUSTOM || !sz || !sz.in_stock) return;
   const cart = loadCart();
-  const line = cart.find(l => l.sku === cur.sku && l.size === sz.size);
+  const line = cart.find(l => l.sku === optSku(cur, sz) && l.size === optSize(sz));
   const have = line ? line.qty : 0;
   const addQty = Math.min(qty, sz.units - have);
   const hint = document.getElementById('pmHint');
   if (addQty <= 0) { hint.textContent = 'Your cart already has all the available stock of this size.'; return; }
   if (line) line.qty += addQty;
-  else cart.push({ sku: cur.sku, design: cur.design, price: cur.price, photo_url: sz.photo || cur.photo_url, size: sz.size, qty: addQty, units: sz.units });
+  else cart.push({ sku: optSku(cur, sz), design: optDesign(cur, sz), price: optPrice(cur, sz), photo_url: sz.photo || cur.photo_url,
+                   size: optSize(sz), label: sz.size, qty: addQty, units: sz.units });
   saveCart(cart);
   updateCartCount();
   qty = 1;
@@ -798,7 +842,7 @@ function renderCart() {
     box.innerHTML = cart.map((l, i) => `
       <div class="cart-line">
         ${l.photo_url ? `<img src="${esc(l.photo_url)}" alt="">` : ''}
-        <div class="cl-info"><b>${esc(l.design)}</b>${esc(l.sku)} &middot; ${esc(sizeLabel(l.size))}<br>${K(l.price)} each</div>
+        <div class="cl-info"><b>${esc(l.design)}</b>${esc(l.sku)} &middot; ${esc(sizeLabel(l.label || l.size))}<br>${K(l.price)} each</div>
         <div class="cl-ctl">
           <button type="button" onclick="cartChange(${i}, -1)" ${l.qty <= 1 ? 'disabled' : ''} aria-label="Less">&minus;</button>
           <span>${l.qty}</span>
@@ -894,7 +938,7 @@ async function cartSendWhatsApp() {
   if (!cart.length || name.length < 2 || txn.length < 4 || !(amount > 0) || !bank) return;
   const sug = suggestPickup();
 
-  const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
+  const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.label || l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
   const msg = `Hi Tiare's Five Fold Creations, I have paid for my order.\nTransaction reference: ${txn}\nAmount paid: K${amtText}\nName: ${name}\nPaid into: ${bank.value}\n${lines.join('\n')}\nTotal: ${K(total)}\nSuggested pickup: ${pickupText(sug)}`;
   const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
