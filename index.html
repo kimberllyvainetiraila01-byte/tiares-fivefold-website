@@ -83,7 +83,8 @@ h2{font-size:40px;font-weight:700;margin:0 0 12px;line-height:1.1}
 .cat-tabs button.on{background:var(--black);color:#fff}
 .cat-tabs span{font-weight:400;font-size:12px;opacity:.75}
 .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
-.item{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column}
+.item{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.pm-badge{position:absolute;top:8px;left:8px;background:rgba(31,29,26,.78);color:#fff;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
 .item img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eef0ea;display:block}
 .item .ph-empty{width:100%;aspect-ratio:1/1;background:#eef0ea;display:flex;align-items:center;justify-content:center;color:#777;font-size:13px}
 .item .info{padding:12px 14px 14px}
@@ -158,6 +159,18 @@ footer b{color:var(--accent-soft)}
 .pm-wa{display:block;width:100%;margin-top:16px;background:#25d366;color:#fff;text-align:center;padding:13px;border:0;border-radius:8px;font-weight:700;font-size:16px;cursor:pointer}
 .pm-wa:disabled{background:#c9ccc9;cursor:not-allowed}
 .pm-hint{font-size:13px;color:#4b4f47;margin-top:6px;text-align:center}
+/* photo gallery: swipe between the photos of each colour */
+.pm-gal{position:relative;background:#eef0ea}
+.pm-track{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.pm-track::-webkit-scrollbar{display:none}
+.pm-slide{flex:0 0 100%;scroll-snap-align:center;position:relative}
+.pm-cap{position:absolute;left:10px;top:10px;background:rgba(31,29,26,.78);color:#fff;font-size:13px;font-weight:600;padding:3px 10px;border-radius:999px}
+.pm-arrow{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:rgba(255,255,255,.9);color:var(--black);font-size:22px;line-height:1;cursor:pointer;z-index:1}
+.pm-prev{left:8px}
+.pm-next{right:8px}
+.pm-dots{display:flex;justify-content:center;gap:7px;padding:10px 0 4px;background:#fff}
+.pm-dots button{width:9px;height:9px;border-radius:50%;border:0;background:#d8d0c2;padding:0;cursor:pointer}
+.pm-dots button.on{background:var(--black)}
 
 /* shopping cart */
 .cart-btn{position:relative;margin-left:16px;background:none;border:0;padding:6px;cursor:pointer;color:#fff;display:inline-flex;align-items:center}
@@ -358,7 +371,7 @@ const LINE_LABEL = { 'Handprinted Kolo': 'Handprinted Kolos', 'Normal Kolo': 'No
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const K = n => 'K' + Number(n || 0).toLocaleString('en-PG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 let groups = [], catLine = 'all';
-let cur = null, curSizes = [], chosen = -1, qty = 1;
+let cur = null, curSizes = [], chosen = -1, qty = 1, curSlides = [], curSlide = 0, slideTimer = null;
 const WHATSAPP_NUMBER = '67576628003';
 const CUSTOM = -2;
 const skuNum = s => { const m = String(s || '').match(/(\d+)\s*$/); return m ? parseInt(m[1], 10) : 999999; };
@@ -366,6 +379,18 @@ const skuNum = s => { const m = String(s || '').match(/(\d+)\s*$/); return m ? p
 const COLOUR_RE = /\b(red|blue|black|white|gold|golden|silver|pink|purple|green|yellow|orange|brown|cream|grey|gray|teal|maroon|navy|peach|beige|aqua|turquoise|violet|lilac|mauve|coral|mustard|olive|ivory|bronze|copper|rose|multi|multicolou?red|mixed|clear|lime|mint|burgundy|magenta|khaki|rust|honeygold)\b/i;
 const isColour = v => v !== 'One size' && COLOUR_RE.test(String(v || ''));
 const optWord = g => (g.sizes.some(s => s.size !== 'One size') && g.sizes.every(s => s.size === 'One size' || isColour(s.size))) ? 'Colour' : 'Size';
+
+// One slide per different photo, labelled with the options shown in it
+function slidesFor(g) {
+  const out = [];
+  g.sizes.forEach(s => {
+    if (!s.photo) return;
+    let sl = out.find(x => x.url === s.photo);
+    if (!sl) out.push(sl = { url: s.photo, labels: [] });
+    sl.labels.push(s.size);
+  });
+  return out;
+}
 
 async function loadCatalogue() {
   const grid = document.getElementById('catGrid');
@@ -380,12 +405,19 @@ async function loadCatalogue() {
     const bySku = new Map();
     (data || []).forEach(r => {
       if (!bySku.has(r.sku)) bySku.set(r.sku, { sku: r.sku, line: r.line, design: r.design, price: r.price, photo_url: r.photo_url, sizes: [] });
-      bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units, in_stock: !!r.in_stock });
+      bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units, in_stock: !!r.in_stock, photo: r.photo_url || '' });
     });
     // Show a design only if at least one of its sizes is in stock; sold-out sizes stay visible but greyed out
     groups = [...bySku.values()].filter(g => g.sizes.some(s => s.in_stock)).sort((a, b) =>
       LINE_ORDER.indexOf(a.line) - LINE_ORDER.indexOf(b.line) || skuNum(a.sku) - skuNum(b.sku));
-    groups.forEach(g => { g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true })); g.opt = optWord(g); });
+    groups.forEach(g => {
+      g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true }));
+      g.opt = optWord(g);
+      g.slides = slidesFor(g);
+      // Card photo: the first in-stock option that has a photo
+      const first = g.sizes.find(s => s.in_stock && s.photo) || g.sizes.find(s => s.photo);
+      g.photo_url = first ? first.photo : g.photo_url;
+    });
     reconcileCart();
     updateCartCount();
     renderTabs();
@@ -415,6 +447,7 @@ function renderGrid() {
     <div class="item pm-card" onclick="openItem(${i})">
       ${g.photo_url ? `<img src="${esc(g.photo_url)}" alt="${esc(g.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
                     : `<div class="ph-empty">Photo coming soon</div>`}
+      ${g.slides.length > 1 ? `<span class="pm-badge">${g.slides.length} photos</span>` : ''}
       <div class="info">
         <div class="code">${esc(g.sku)}</div>
         <h3>${esc(g.design)}</h3>
@@ -436,7 +469,7 @@ function ensureModal() {
   wrap.innerHTML = `
     <div class="pm-sheet" onclick="event.stopPropagation()">
       <button class="pm-x" onclick="pmClose()" aria-label="Close">&times;</button>
-      <img id="pmImg" alt="">
+      <div class="pm-gal" id="pmGal"></div>
       <div class="pm-body">
         <div class="pm-design" id="pmDesign"></div>
         <div class="pm-code" id="pmCode"></div>
@@ -468,9 +501,7 @@ function openItem(i) {
   curSizes = cur.sizes;
   chosen = -1;
   qty = 1;
-  const img = document.getElementById('pmImg');
-  img.src = cur.photo_url || '';
-  img.style.display = cur.photo_url ? 'block' : 'none';
+  pmRenderGallery();
   document.getElementById('pmDesign').textContent = cur.design;
   document.getElementById('pmCode').textContent = 'Code: ' + cur.sku;
   document.getElementById('pmPrice').textContent = K(cur.price);
@@ -487,10 +518,67 @@ function openItem(i) {
 }
 
 function pmPick(n) {
+  pmSelect(n);
+  // Show the photo of the chosen colour
+  const k = curSlides.findIndex(sl => sl.url === curSizes[n].photo);
+  if (k >= 0 && k !== curSlide) pmGo(k);
+}
+
+function pmSelect(n) {
   chosen = n;
   pmHighlight();
   document.getElementById('pmCustomWrap').hidden = true;
   pmUpdate();
+}
+
+function pmRenderGallery() {
+  const gal = document.getElementById('pmGal');
+  curSlides = cur.slides.length ? cur.slides : (cur.photo_url ? [{ url: cur.photo_url, labels: [] }] : []);
+  curSlide = 0;
+  if (!curSlides.length) { gal.innerHTML = ''; return; }
+  if (curSlides.length === 1) { gal.innerHTML = `<img src="${esc(curSlides[0].url)}" alt="${esc(cur.design)}">`; return; }
+  const cap = sl => cur.opt === 'Colour' ? `<span class="pm-cap">${esc(sl.labels.join(' / '))}</span>` : '';
+  gal.innerHTML = `
+    <div class="pm-track" id="pmTrack" onscroll="pmOnScroll()">
+      ${curSlides.map((sl, k) => `<div class="pm-slide"><img src="${esc(sl.url)}" alt="${esc(cur.design + ' ' + sl.labels.join(', '))}" ${k ? 'loading="lazy"' : ''}>${cap(sl)}</div>`).join('')}
+    </div>
+    <button type="button" class="pm-arrow pm-prev" onclick="pmGo(curSlide - 1)" aria-label="Previous photo">&#8249;</button>
+    <button type="button" class="pm-arrow pm-next" onclick="pmGo(curSlide + 1)" aria-label="Next photo">&#8250;</button>
+    <div class="pm-dots">${curSlides.map((sl, k) => `<button type="button" onclick="pmGo(${k})" aria-label="Photo ${k + 1}"></button>`).join('')}</div>`;
+  pmDots();
+}
+
+function pmGo(k) {
+  const t = document.getElementById('pmTrack');
+  if (!t) return;
+  k = (k + curSlides.length) % curSlides.length;
+  t.scrollTo({ left: k * t.clientWidth, behavior: 'smooth' });
+}
+
+function pmDots() {
+  document.querySelectorAll('#pmGal .pm-dots button').forEach((b, k) => b.classList.toggle('on', k === curSlide));
+}
+
+// After a swipe settles, mark the photo and pick its colour if it is in stock
+function pmOnScroll() {
+  clearTimeout(slideTimer);
+  slideTimer = setTimeout(() => {
+    const t = document.getElementById('pmTrack');
+    if (!t || !cur) return;
+    const k = Math.round(t.scrollLeft / t.clientWidth);
+    if (k === curSlide) return;
+    curSlide = k;
+    pmDots();
+    const sl = curSlides[k];
+    if (cur.opt !== 'Colour' || !sl || sl.labels.length !== 1) return;
+    const n = curSizes.findIndex(s => s.size === sl.labels[0]);
+    if (n < 0 || n === chosen) return;
+    if (curSizes[n].in_stock) { pmSelect(n); return; }
+    chosen = -1;
+    pmHighlight();
+    pmUpdate();
+    document.getElementById('pmHint').textContent = sl.labels[0] + ' is sold out';
+  }, 120);
 }
 
 function pmCustomPick() {
@@ -552,7 +640,7 @@ function pmSend() {
     sizeLine = cur.opt.toLowerCase() + ' ' + curSizes[chosen].size;
   }
   const msg = `Hi Tiare's Five Fold Creations, I'd like to order ${cur.sku} - ${cur.design}, ${sizeLine}, quantity ${qty}.` +
-    (cur.photo_url ? ` Photo: ${cur.photo_url}` : '');
+    ((chosen >= 0 && curSizes[chosen].photo) || cur.photo_url ? ` Photo: ${(chosen >= 0 && curSizes[chosen].photo) || cur.photo_url}` : '');
   window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
 
@@ -580,7 +668,7 @@ function reconcileCart() {
     const g = groups.find(x => x.sku === l.sku);
     const sz = g && g.sizes.find(z => z.size === l.size);
     if (!g || !sz || !sz.in_stock) return null;
-    return { ...l, design: g.design, price: g.price, photo_url: g.photo_url, units: sz.units, qty: Math.min(l.qty, sz.units) };
+    return { ...l, design: g.design, price: g.price, photo_url: sz.photo || g.photo_url, units: sz.units, qty: Math.min(l.qty, sz.units) };
   }).filter(Boolean);
   saveCart(next);
 }
@@ -595,7 +683,7 @@ function pmAddToCart() {
   const hint = document.getElementById('pmHint');
   if (addQty <= 0) { hint.textContent = 'Your cart already has all the available stock of this size.'; return; }
   if (line) line.qty += addQty;
-  else cart.push({ sku: cur.sku, design: cur.design, price: cur.price, photo_url: cur.photo_url, size: sz.size, qty: addQty, units: sz.units });
+  else cart.push({ sku: cur.sku, design: cur.design, price: cur.price, photo_url: sz.photo || cur.photo_url, size: sz.size, qty: addQty, units: sz.units });
   saveCart(cart);
   updateCartCount();
   qty = 1;
