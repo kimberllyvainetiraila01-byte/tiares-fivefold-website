@@ -85,6 +85,7 @@ h2{font-size:40px;font-weight:700;margin:0 0 12px;line-height:1.1}
 .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
 .item{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;position:relative}
 .pm-badge{position:absolute;top:8px;left:8px;background:rgba(31,29,26,.78);color:#fff;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
+.pm-soldout{position:absolute;top:8px;right:8px;background:#a3303b;color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
 .item img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eef0ea;display:block}
 .item .ph-empty{width:100%;aspect-ratio:1/1;background:#eef0ea;display:flex;align-items:center;justify-content:center;color:#777;font-size:13px}
 .item .info{padding:12px 14px 14px}
@@ -254,7 +255,7 @@ footer b{color:var(--accent-soft)}
   <div class="wrap">
     <p class="eyebrow">Live catalogue</p>
     <h2>Designs in stock</h2>
-    <p class="intro">Items currently available, with prices in kina (K). Stock changes as items sell, so check with us before you order.</p>
+    <p class="intro">Items currently available, with prices in kina (K). Stock changes as items sell, so check with us before you order. Sold-out handprinted designs can be made to order in your size.</p>
     <div class="cat-tabs" id="catTabs"></div>
     <div class="cat-grid" id="catGrid"><p class="muted">Loading designs...</p></div>
   </div>
@@ -443,12 +444,15 @@ async function loadCatalogue() {
       if (!bySku.has(r.sku)) bySku.set(r.sku, { sku: r.sku, line: r.line, design: r.design, price: r.price, photo_url: r.photo_url, sizes: [] });
       bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units, in_stock: !!r.in_stock, photo: r.photo_url || '' });
     });
-    // Show a design only if at least one of its sizes is in stock; sold-out sizes stay visible but greyed out
-    groups = [...bySku.values()].filter(g => g.sizes.some(s => s.in_stock)).sort((a, b) =>
+    // Show a design only if at least one of its sizes is in stock; sold-out sizes stay visible but greyed out.
+    // Handprinted designs 064 to 201 always show, even when sold out, so customers can order them made to size.
+    const alwaysShow = g => g.line === 'Handprinted Kolo' && skuNum(g.sku) >= 64 && skuNum(g.sku) <= 201;
+    groups = [...bySku.values()].filter(g => g.sizes.some(s => s.in_stock) || alwaysShow(g)).sort((a, b) =>
       LINE_ORDER.indexOf(a.line) - LINE_ORDER.indexOf(b.line) || skuNum(a.sku) - skuNum(b.sku));
     groups.forEach(g => {
       g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true }));
       g.opt = optWord(g);
+      g.soldOut = !g.sizes.some(s => s.in_stock);
       g.slides = slidesFor(g);
       // Card photo: a group photo if there is one, else the first in-stock option that has a photo
       const first = g.sizes.find(s => s.in_stock && s.photo) || g.sizes.find(s => s.photo);
@@ -484,12 +488,13 @@ function renderGrid() {
       ${g.photo_url ? `<img src="${esc(g.photo_url)}" alt="${esc(g.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
                     : `<div class="ph-empty">Photo coming soon</div>`}
       ${g.slides.length > 1 ? `<span class="pm-badge">${g.slides.length} photos</span>` : ''}
+      ${g.soldOut ? '<span class="pm-soldout">Sold out</span>' : ''}
       <div class="info">
         <div class="code">${esc(g.sku)}</div>
         <h3>${esc(g.design)}</h3>
         <div class="meta">${g.opt}s: ${esc(g.sizes.map(s => s.size).join(', '))}</div>
         <div class="price">${K(g.price)}</div>
-        <div class="pm-tap">Tap for ${g.opt.toLowerCase()}s &amp; to order</div>
+        <div class="pm-tap">${g.soldOut ? 'Sold out &middot; tap to order it made in your size' : `Tap for ${g.opt.toLowerCase()}s &amp; to order`}</div>
       </div>
     </div>`).join('');
 }
@@ -650,7 +655,9 @@ function pmShowQty() {
 function pmUpdate() {
   const btn = document.getElementById('pmWa');
   const customText = document.getElementById('pmCustom').value.trim();
-  let ready = false, hint = 'Tap a ' + cur.opt.toLowerCase() + ' first';
+  let ready = false, hint = cur.soldOut
+    ? 'This design is sold out. Tap Custom size to have it made in your size, then order on WhatsApp.'
+    : 'Tap a ' + cur.opt.toLowerCase() + ' first';
   if (chosen === CUSTOM) {
     ready = customText.length > 0;
     hint = ready ? 'Custom size: ' + customText.slice(0, 20) : 'Type the size you want';
