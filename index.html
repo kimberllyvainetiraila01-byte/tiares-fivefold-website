@@ -531,7 +531,6 @@ function ensureModal() {
           <button type="button" id="pmPlus" onclick="pmQty(1)" aria-label="More">+</button>
         </div>
         <button class="pm-add" id="pmAdd" disabled onclick="pmAddToCart()">Add to cart</button>
-        <button class="pm-wa" id="pmWa" disabled onclick="pmSend()">Order on WhatsApp</button>
         <div class="pm-hint" id="pmHint">Tap a size first</div>
       </div>
     </div>`;
@@ -658,42 +657,25 @@ function pmShowQty() {
 }
 
 function pmUpdate() {
-  const btn = document.getElementById('pmWa');
   const customText = document.getElementById('pmCustom').value.trim();
   let ready = false, hint = cur.soldOut
-    ? 'This design is sold out. Tap Custom size to have it made in your size, then order on WhatsApp.'
+    ? 'This design is made to order. Type your size, then add it to your cart.'
     : 'Tap a ' + cur.opt.toLowerCase() + ' first';
   if (chosen === CUSTOM) {
     ready = customText.length > 0;
-    hint = ready ? 'Custom size: ' + customText.slice(0, 20) : 'Type the size you want';
+    hint = ready ? 'Custom size: ' + customText.slice(0, 20) + '. Made to order: add it to your cart and pay at checkout.'
+                 : 'Type the size you want';
   } else if (chosen >= 0) {
-    ready = true;
+    ready = curSizes[chosen].in_stock;
     hint = cur.opt + ' ' + curSizes[chosen].size + ' selected';
   }
-  btn.disabled = !ready;
-  document.getElementById('pmAdd').disabled = !(chosen >= 0 && chosen !== CUSTOM && curSizes[chosen].in_stock);
+  // Orders go through the cart and checkout; a custom size is made to order
+  document.getElementById('pmAdd').disabled = !ready;
   const o = chosen >= 0 ? curSizes[chosen] : null;
   document.getElementById('pmCode').textContent = 'Code: ' + (o ? optSku(cur, o) : cur.sku);
   document.getElementById('pmPrice').textContent = K(o ? optPrice(cur, o) : cur.price);
-  if (chosen === CUSTOM) hint += '. Custom sizes are made to order, so please use Order on WhatsApp.';
   document.getElementById('pmHint').textContent = hint;
   pmShowQty();
-}
-
-function pmSend() {
-  if (!cur || chosen === -1) return;
-  let sizeLine;
-  if (chosen === CUSTOM) {
-    const t = document.getElementById('pmCustom').value.trim();
-    if (!t) return;
-    sizeLine = 'custom size ' + t;
-  } else {
-    sizeLine = cur.opt.toLowerCase() + ' ' + curSizes[chosen].size;
-  }
-  const o = chosen >= 0 ? curSizes[chosen] : {};
-  const msg = `Hi Tiare's Five Fold Creations, I'd like to order ${optSku(cur, o)} - ${optDesign(cur, o)}, ${sizeLine}, quantity ${qty}.` +
-    ((chosen >= 0 && curSizes[chosen].photo) || cur.photo_url ? ` Photo: ${(chosen >= 0 && curSizes[chosen].photo) || cur.photo_url}` : '');
-  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener');
 }
 
 function pmClose(e) {
@@ -707,6 +689,9 @@ const CART_KEY = 'tfc_cart';
 const loadCart = () => { try { return JSON.parse(localStorage.getItem(CART_KEY)) || []; } catch (e) { return []; } };
 const saveCart = c => { try { localStorage.setItem(CART_KEY, JSON.stringify(c)); } catch (e) {} };
 const sizeLabel = s => (s === 'One size' ? 'One size' : (isColour(s) ? 'Colour ' : 'Size ') + s);
+// Label for a cart line: custom sizes are made to order
+const lineLabel = l => l.custom ? 'Custom size ' + String(l.size).replace(/^Custom /, '') + ' (made to order)' : sizeLabel(l.label || l.size);
+const CUSTOM_MAX = 20;
 
 function updateCartCount() {
   const n = loadCart().reduce((t, l) => t + l.qty, 0);
@@ -717,6 +702,11 @@ function updateCartCount() {
 // Drop sold-out lines and cap quantities at the live stock
 function reconcileCart() {
   const next = loadCart().map(l => {
+    if (l.custom) {
+      // Made to order: keep it while the design is still listed
+      const g = groups.find(x => x.sku === l.sku);
+      return g ? { ...l, design: g.design, price: g.price, photo_url: g.photo_url, units: CUSTOM_MAX, qty: Math.min(l.qty, CUSTOM_MAX) } : null;
+    }
     let g = null, sz = null;
     for (const x of groups) {
       sz = x.sizes.find(z => optSku(x, z) === l.sku && optSize(z) === l.size);
@@ -729,6 +719,22 @@ function reconcileCart() {
 }
 
 function pmAddToCart() {
+  if (cur && chosen === CUSTOM) {
+    const t = document.getElementById('pmCustom').value.trim().slice(0, 20);
+    if (!t) return;
+    const size = 'Custom ' + t;
+    const cart = loadCart();
+    const line = cart.find(l => l.sku === cur.sku && l.size === size);
+    if (line) line.qty = Math.min(CUSTOM_MAX, line.qty + qty);
+    else cart.push({ sku: cur.sku, design: cur.design, price: cur.price, photo_url: cur.photo_url,
+                     size, label: size, custom: true, qty, units: CUSTOM_MAX });
+    saveCart(cart);
+    updateCartCount();
+    qty = 1;
+    pmShowQty();
+    document.getElementById('pmHint').textContent = 'Added custom size ' + t + ' to your cart. Open Cart to order.';
+    return;
+  }
   const sz = curSizes[chosen];
   if (!cur || chosen < 0 || chosen === CUSTOM || !sz || !sz.in_stock) return;
   const cart = loadCart();
@@ -854,7 +860,7 @@ function renderCart() {
     box.innerHTML = cart.map((l, i) => `
       <div class="cart-line">
         ${l.photo_url ? `<img src="${esc(l.photo_url)}" alt="">` : ''}
-        <div class="cl-info"><b>${esc(l.design)}</b>${esc(l.sku)} &middot; ${esc(sizeLabel(l.label || l.size))}<br>${K(l.price)} each</div>
+        <div class="cl-info"><b>${esc(l.design)}</b>${esc(l.sku)} &middot; ${esc(lineLabel(l))}<br>${K(l.price)} each</div>
         <div class="cl-ctl">
           <button type="button" onclick="cartChange(${i}, -1)" ${l.qty <= 1 ? 'disabled' : ''} aria-label="Less">&minus;</button>
           <span>${l.qty}</span>
@@ -950,7 +956,7 @@ async function cartSendWhatsApp() {
   if (!cart.length || name.length < 2 || txn.length < 4 || !(amount > 0) || !bank) return;
   const sug = suggestPickup();
 
-  const lines = cart.map(l => `- ${l.sku} ${l.design}, ${sizeLabel(l.label || l.size).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
+  const lines = cart.map(l => `- ${l.sku} ${l.design}, ${lineLabel(l).toLowerCase()}, qty ${l.qty} (${K(l.price)} each)` + (l.photo_url ? `\n  Photo: ${l.photo_url}` : ''));
   const total = cart.reduce((t, l) => t + l.price * l.qty, 0);
   const msg = `Hi Tiare's Five Fold Creations, I have paid for my order.\nTransaction reference: ${txn}\nAmount paid: K${amtText}\nName: ${name}\nPaid into: ${bank.value}\n${lines.join('\n')}\nTotal: ${K(total)}\nSuggested pickup: ${pickupText(sug)}`;
   const waUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`;
@@ -966,7 +972,7 @@ async function cartSendWhatsApp() {
     p_bank: bank.value,
     p_amount: amount,
     p_txn: txn,
-    p_items: cart.map(l => ({ sku: l.sku, design: l.design, size: l.size, qty: l.qty, price: l.price })),
+    p_items: cart.map(l => ({ sku: l.sku, design: l.design, size: l.size, qty: l.qty, price: l.price, ...(l.custom ? { custom: true } : {}) })),
     p_suggested: ymd(sug)
   });
   if (w) w.location = waUrl; else window.location = waUrl;
