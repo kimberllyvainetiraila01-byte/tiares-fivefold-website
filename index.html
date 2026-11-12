@@ -85,7 +85,7 @@ h2{font-size:40px;font-weight:700;margin:0 0 12px;line-height:1.1}
 .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
 .item{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;position:relative}
 .pm-badge{position:absolute;top:8px;left:8px;background:rgba(31,29,26,.78);color:#fff;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
-.pm-soldout{position:absolute;top:8px;right:8px;background:#a3303b;color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
+.pm-soldout{position:absolute;top:8px;right:8px;background:var(--accent-dark);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
 .item img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eef0ea;display:block}
 .item .ph-empty{width:100%;aspect-ratio:1/1;background:#eef0ea;display:flex;align-items:center;justify-content:center;color:#777;font-size:13px}
 .item .info{padding:12px 14px 14px}
@@ -488,13 +488,13 @@ function renderGrid() {
       ${g.photo_url ? `<img src="${esc(g.photo_url)}" alt="${esc(g.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
                     : `<div class="ph-empty">Photo coming soon</div>`}
       ${g.slides.length > 1 ? `<span class="pm-badge">${g.slides.length} photos</span>` : ''}
-      ${g.soldOut ? '<span class="pm-soldout">Sold out</span>' : ''}
+      ${g.soldOut ? '<span class="pm-soldout">Made to order</span>' : ''}
       <div class="info">
         <div class="code">${esc(g.sku)}</div>
         <h3>${esc(g.design)}</h3>
-        <div class="meta">${g.opt}s: ${esc(g.sizes.map(s => s.size).join(', '))}</div>
+        <div class="meta">${g.soldOut ? 'Made in your size' : `${g.opt}s: ${esc(g.sizes.map(s => s.size).join(', '))}`}</div>
         <div class="price">${K(g.price)}</div>
-        <div class="pm-tap">${g.soldOut ? 'Sold out &middot; tap to order it made in your size' : `Tap for ${g.opt.toLowerCase()}s &amp; to order`}</div>
+        <div class="pm-tap">${g.soldOut ? 'Tap to order in your size' : `Tap for ${g.opt.toLowerCase()}s &amp; to order`}</div>
       </div>
     </div>`).join('');
 }
@@ -548,13 +548,15 @@ function openItem(i) {
   document.getElementById('pmPrice').textContent = K(cur.price);
   document.getElementById('pmCustom').value = '';
   document.getElementById('pmCustomWrap').hidden = true;
-  document.getElementById('pmOptH').textContent = 'Choose a ' + cur.opt.toLowerCase();
-  // Custom sizes are for clothing; colour options have no custom choice
-  document.getElementById('pmSizes').innerHTML = curSizes.map((s, n) =>
-    `<button class="pm-size" ${s.in_stock ? '' : 'disabled title="Sold out"'} onclick="pmPick(${n})">${esc(s.size)}</button>`).join('') +
+  document.getElementById('pmOptH').textContent = cur.soldOut ? 'Made to order in your size' : 'Choose a ' + cur.opt.toLowerCase();
+  // Custom sizes are for clothing; colour options have no custom choice.
+  // A design with no stock left is offered as a custom size only, made to order.
+  document.getElementById('pmSizes').innerHTML = (cur.soldOut ? '' : curSizes.map((s, n) =>
+    `<button class="pm-size" ${s.in_stock ? '' : 'disabled title="Sold out"'} onclick="pmPick(${n})">${esc(s.size)}</button>`).join('')) +
     (cur.opt === 'Size' ? `<button class="pm-size custom" onclick="pmCustomPick()">Custom size</button>` : '');
   pmShowQty();
-  pmUpdate();
+  if (cur.soldOut && cur.opt === 'Size') pmCustomPick(false);
+  else pmUpdate();
   document.getElementById('pmModal').hidden = false;
 }
 
@@ -622,11 +624,11 @@ function pmOnScroll() {
   }, 120);
 }
 
-function pmCustomPick() {
+function pmCustomPick(focus = true) {
   chosen = CUSTOM;
   pmHighlight();
   document.getElementById('pmCustomWrap').hidden = false;
-  document.getElementById('pmCustom').focus();
+  if (focus) document.getElementById('pmCustom').focus();
   pmUpdate();
 }
 
