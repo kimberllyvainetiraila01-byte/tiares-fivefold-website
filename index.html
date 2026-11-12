@@ -447,8 +447,8 @@ async function loadCatalogue() {
       bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units, in_stock: !!r.in_stock, photo: r.photo_url || '' });
     });
     // Show a design only if at least one of its sizes is in stock; sold-out sizes stay visible but greyed out.
-    // Handprinted designs 064 to 201 always show, even when sold out, so customers can order them made to size.
-    const alwaysShow = g => g.line === 'Handprinted Kolo' && skuNum(g.sku) >= 64 && skuNum(g.sku) <= 201;
+    // Handprinted designs from 064 onwards always show, even when sold out, so customers can order them made to size.
+    const alwaysShow = g => g.line === 'Handprinted Kolo' && skuNum(g.sku) >= 64 && skuNum(g.sku) < 999999;
     groups = [...bySku.values()].filter(g => g.sizes.some(s => s.in_stock) || alwaysShow(g)).sort((a, b) =>
       LINE_ORDER.indexOf(a.line) - LINE_ORDER.indexOf(b.line) || skuNum(a.sku) - skuNum(b.sku));
     groups.forEach(g => {
