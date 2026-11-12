@@ -362,6 +362,10 @@ let cur = null, curSizes = [], chosen = -1, qty = 1;
 const WHATSAPP_NUMBER = '67576628003';
 const CUSTOM = -2;
 const skuNum = s => { const m = String(s || '').match(/(\d+)\s*$/); return m ? parseInt(m[1], 10) : 999999; };
+// Some designs (for example earrings) come in colours instead of sizes. Their options are typed as colour names.
+const COLOUR_RE = /\b(red|blue|black|white|gold|golden|silver|pink|purple|green|yellow|orange|brown|cream|grey|gray|teal|maroon|navy|peach|beige|aqua|turquoise|violet|lilac|mauve|coral|mustard|olive|ivory|bronze|copper|rose|multi|multicolou?red|mixed|clear|lime|mint|burgundy|magenta|khaki|rust|honeygold)\b/i;
+const isColour = v => v !== 'One size' && COLOUR_RE.test(String(v || ''));
+const optWord = g => (g.sizes.some(s => s.size !== 'One size') && g.sizes.every(s => s.size === 'One size' || isColour(s.size))) ? 'Colour' : 'Size';
 
 async function loadCatalogue() {
   const grid = document.getElementById('catGrid');
@@ -381,7 +385,7 @@ async function loadCatalogue() {
     // Show a design only if at least one of its sizes is in stock; sold-out sizes stay visible but greyed out
     groups = [...bySku.values()].filter(g => g.sizes.some(s => s.in_stock)).sort((a, b) =>
       LINE_ORDER.indexOf(a.line) - LINE_ORDER.indexOf(b.line) || skuNum(a.sku) - skuNum(b.sku));
-    groups.forEach(g => g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true })));
+    groups.forEach(g => { g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true })); g.opt = optWord(g); });
     reconcileCart();
     updateCartCount();
     renderTabs();
@@ -414,9 +418,9 @@ function renderGrid() {
       <div class="info">
         <div class="code">${esc(g.sku)}</div>
         <h3>${esc(g.design)}</h3>
-        <div class="meta">Sizes: ${esc(g.sizes.map(s => s.size).join(', '))}</div>
+        <div class="meta">${g.opt}s: ${esc(g.sizes.map(s => s.size).join(', '))}</div>
         <div class="price">${K(g.price)}</div>
-        <div class="pm-tap">Tap for sizes &amp; to order</div>
+        <div class="pm-tap">Tap for ${g.opt.toLowerCase()}s &amp; to order</div>
       </div>
     </div>`).join('');
 }
@@ -437,7 +441,7 @@ function ensureModal() {
         <div class="pm-design" id="pmDesign"></div>
         <div class="pm-code" id="pmCode"></div>
         <div class="pm-price" id="pmPrice"></div>
-        <div class="pm-h">Choose a size</div>
+        <div class="pm-h" id="pmOptH">Choose a size</div>
         <div class="pm-sizes" id="pmSizes"></div>
         <div class="pm-custom" id="pmCustomWrap" hidden>
           <label for="pmCustom">Type the size you want</label>
@@ -472,9 +476,11 @@ function openItem(i) {
   document.getElementById('pmPrice').textContent = K(cur.price);
   document.getElementById('pmCustom').value = '';
   document.getElementById('pmCustomWrap').hidden = true;
+  document.getElementById('pmOptH').textContent = 'Choose a ' + cur.opt.toLowerCase();
+  // Custom sizes are for clothing; colour options have no custom choice
   document.getElementById('pmSizes').innerHTML = curSizes.map((s, n) =>
     `<button class="pm-size" ${s.in_stock ? '' : 'disabled title="Sold out"'} onclick="pmPick(${n})">${esc(s.size)}</button>`).join('') +
-    `<button class="pm-size custom" onclick="pmCustomPick()">Custom size</button>`;
+    (cur.opt === 'Size' ? `<button class="pm-size custom" onclick="pmCustomPick()">Custom size</button>` : '');
   pmShowQty();
   pmUpdate();
   document.getElementById('pmModal').hidden = false;
@@ -520,13 +526,13 @@ function pmShowQty() {
 function pmUpdate() {
   const btn = document.getElementById('pmWa');
   const customText = document.getElementById('pmCustom').value.trim();
-  let ready = false, hint = 'Tap a size first';
+  let ready = false, hint = 'Tap a ' + cur.opt.toLowerCase() + ' first';
   if (chosen === CUSTOM) {
     ready = customText.length > 0;
     hint = ready ? 'Custom size: ' + customText.slice(0, 20) : 'Type the size you want';
   } else if (chosen >= 0) {
     ready = true;
-    hint = 'Size ' + curSizes[chosen].size + ' selected';
+    hint = cur.opt + ' ' + curSizes[chosen].size + ' selected';
   }
   btn.disabled = !ready;
   document.getElementById('pmAdd').disabled = !(chosen >= 0 && chosen !== CUSTOM && curSizes[chosen].in_stock);
@@ -543,7 +549,7 @@ function pmSend() {
     if (!t) return;
     sizeLine = 'custom size ' + t;
   } else {
-    sizeLine = 'size ' + curSizes[chosen].size;
+    sizeLine = cur.opt.toLowerCase() + ' ' + curSizes[chosen].size;
   }
   const msg = `Hi Tiare's Five Fold Creations, I'd like to order ${cur.sku} - ${cur.design}, ${sizeLine}, quantity ${qty}.` +
     (cur.photo_url ? ` Photo: ${cur.photo_url}` : '');
@@ -560,7 +566,7 @@ function pmClose(e) {
 const CART_KEY = 'tfc_cart';
 const loadCart = () => { try { return JSON.parse(localStorage.getItem(CART_KEY)) || []; } catch (e) { return []; } };
 const saveCart = c => { try { localStorage.setItem(CART_KEY, JSON.stringify(c)); } catch (e) {} };
-const sizeLabel = s => (s === 'One size' ? 'One size' : 'Size ' + s);
+const sizeLabel = s => (s === 'One size' ? 'One size' : (isColour(s) ? 'Colour ' : 'Size ') + s);
 
 function updateCartCount() {
   const n = loadCart().reduce((t, l) => t + l.qty, 0);
