@@ -79,9 +79,10 @@ h2{font-size:40px;font-weight:700;margin:0 0 12px;line-height:1.1}
 
 /* live catalogue */
 .cat-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
-.cat-tabs button{padding:9px 16px;border:2px solid var(--black);background:#fff;border-radius:999px;cursor:pointer;font-weight:700;font-size:14px}
+.cat-tabs button{padding:11px 18px;border:2px solid var(--black);background:#fff;border-radius:999px;cursor:pointer;font-weight:700;font-size:14px}
 .cat-tabs button.on{background:var(--black);color:#fff}
 .cat-tabs span{font-weight:400;font-size:12px;opacity:.75}
+.cat-pick{color:#4b4f47;font-size:16px;margin:4px 0 0}
 .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
 .item{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;position:relative}
 .pm-badge{position:absolute;top:8px;left:8px;background:rgba(31,29,26,.78);color:#fff;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
@@ -371,7 +372,8 @@ const LINE_ORDER = ['Handprinted Kolo', 'Normal Kolo', 'Jewelry'];
 const LINE_LABEL = { 'Handprinted Kolo': 'Handprinted Kolos', 'Normal Kolo': 'Normal Kolos', 'Jewelry': 'Jewelry' };
 const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const K = n => 'K' + Number(n || 0).toLocaleString('en-PG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
-let groups = [], catLine = 'all';
+// No product line is open at first: designs show once a customer taps a line tab
+let groups = [], catLine = null;
 let cur = null, curSizes = [], chosen = -1, qty = 1, curSlides = [], curSlide = 0, slideTimer = null;
 const WHATSAPP_NUMBER = '67576628003';
 const CUSTOM = -2;
@@ -470,7 +472,6 @@ async function loadCatalogue() {
 function renderTabs() {
   const lines = LINE_ORDER.filter(l => groups.some(x => x.line === l));
   document.getElementById('catTabs').innerHTML =
-    `<button class="${catLine==='all'?'on':''}" onclick="pickLine('all')">All <span>${groups.length}</span></button>` +
     lines.map(l => {
       const c = groups.filter(x => x.line === l).length;
       return `<button class="${catLine===l?'on':''}" onclick="pickLine('${esc(l)}')">${esc(LINE_LABEL[l] || l)} <span>${c}</span></button>`;
@@ -481,7 +482,8 @@ function pickLine(l) { catLine = l; renderTabs(); renderGrid(); }
 
 function renderGrid() {
   const grid = document.getElementById('catGrid');
-  const list = groups.map((g, i) => ({ g, i })).filter(o => catLine === 'all' || o.g.line === catLine);
+  if (!catLine) { grid.innerHTML = '<p class="cat-pick">Tap a product line above to see its designs.</p>'; return; }
+  const list = groups.map((g, i) => ({ g, i })).filter(o => o.g.line === catLine);
   if (!list.length) { grid.innerHTML = '<p class="muted">No designs are in stock in this line right now.</p>'; return; }
   grid.innerHTML = list.map(({ g, i }) => `
     <div class="item pm-card" onclick="openItem(${i})">
