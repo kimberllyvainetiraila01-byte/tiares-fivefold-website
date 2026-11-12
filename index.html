@@ -475,7 +475,8 @@ function renderTabs() {
     lines.map(l => {
       const c = groups.filter(x => x.line === l).length;
       return `<button class="${catLine===l?'on':''}" onclick="pickLine('${esc(l)}')">${esc(LINE_LABEL[l] || l)} <span>${c}</span></button>`;
-    }).join('');
+    }).join('') +
+    `<button class="${catLine==='all'?'on':''}" onclick="pickLine('all')">All <span>${groups.length}</span></button>`;
 }
 
 function pickLine(l) { catLine = l; renderTabs(); renderGrid(); }
@@ -483,7 +484,7 @@ function pickLine(l) { catLine = l; renderTabs(); renderGrid(); }
 function renderGrid() {
   const grid = document.getElementById('catGrid');
   if (!catLine) { grid.innerHTML = '<p class="cat-pick">Tap a product line above to see its designs.</p>'; return; }
-  const list = groups.map((g, i) => ({ g, i })).filter(o => o.g.line === catLine);
+  const list = groups.map((g, i) => ({ g, i })).filter(o => catLine === 'all' || o.g.line === catLine);
   if (!list.length) { grid.innerHTML = '<p class="muted">No designs are in stock in this line right now.</p>'; return; }
   grid.innerHTML = list.map(({ g, i }) => `
     <div class="item pm-card" onclick="openItem(${i})">
