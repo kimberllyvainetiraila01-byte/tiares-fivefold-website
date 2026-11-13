@@ -396,6 +396,10 @@ const COMBINE = [
       { sku: 'HCFWPBMC-003', colour: 'Mixed', photo: productImg('HCFWPBMC-003.jpg') }
     ] }
 ];
+// Extra photos for a design, shown after its own photos in the gallery (for example jewellery being worn).
+const MORE_PHOTOS = {
+  'SSGED-002': [{ file: 'SSGED-002-worn.jpg', label: 'Worn' }]
+};
 function combineFor(r) {
   for (const c of COMBINE) {
     const part = c.parts.find(pt => pt.sku === r.sku && (!pt.match || pt.match.test(r.design || '')));
@@ -456,6 +460,7 @@ async function loadCatalogue() {
       g.opt = optWord(g);
       g.soldOut = !g.sizes.some(s => s.in_stock);
       g.slides = slidesFor(g);
+      (MORE_PHOTOS[g.sku] || []).forEach(x => g.slides.push({ url: productImg(x.file), labels: [x.label] }));
       // Card photo: a group photo if there is one, else the first in-stock option that has a photo
       const first = g.sizes.find(s => s.in_stock && s.photo) || g.sizes.find(s => s.photo);
       g.photo_url = (g.extra && g.extra.length) ? g.extra[0].url : first ? first.photo : g.photo_url;
