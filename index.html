@@ -81,6 +81,8 @@ h2{font-size:40px;font-weight:700;margin:0 0 12px;line-height:1.1}
 .cat-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
 .cat-tabs button{padding:11px 18px;border:2px solid var(--black);background:#fff;border-radius:999px;cursor:pointer;font-weight:700;font-size:14px}
 .cat-tabs button.on{background:var(--black);color:#fff}
+.cat-tabs button.clear{border-color:#b3261e;color:#b3261e}
+.cat-tabs button.clear.on{background:#b3261e;color:#fff}
 .cat-tabs span{font-weight:400;font-size:12px;opacity:.75}
 .cat-pick{color:#4b4f47;font-size:16px;margin:4px 0 0}
 .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
@@ -392,6 +394,9 @@ const CLEARANCE = {
   'AT-NK-138': 180,
   'AT-NK-151': 160
 };
+// Dresses (Handprinted and Normal Kolo) priced K100 or less are on clearance automatically, plus any code in CLEARANCE.
+const CLEAR_LINES = ['Handprinted Kolo', 'Normal Kolo'];
+const isClear = g => !g.soldOut && (!!CLEARANCE[g.sku] || (CLEAR_LINES.includes(g.line) && Number(g.price) <= 100));
 const wasHtml = g => CLEARANCE[g.sku] ? ` <span class="was">${K(CLEARANCE[g.sku])}</span>` : '';
 
 // Website-only groupings: separate stock codes shown to customers as one design with colour choices.
@@ -495,6 +500,7 @@ function renderTabs() {
       const c = groups.filter(x => x.line === l).length;
       return `<button class="${catLine===l?'on':''}" onclick="pickLine('${esc(l)}')">${esc(LINE_LABEL[l] || l)} <span>${c}</span></button>`;
     }).join('') +
+    (groups.some(isClear) ? `<button class="clear ${catLine==='clearance'?'on':''}" onclick="pickLine('clearance')">Clearance <span>${groups.filter(isClear).length}</span></button>` : '') +
     `<button class="${catLine==='all'?'on':''}" onclick="pickLine('all')">All <span>${groups.length}</span></button>`;
 }
 
@@ -503,14 +509,14 @@ function pickLine(l) { catLine = l; renderTabs(); renderGrid(); }
 function renderGrid() {
   const grid = document.getElementById('catGrid');
   if (!catLine) { grid.innerHTML = '<p class="cat-pick">Tap a product line above to see its designs.</p>'; return; }
-  const list = groups.map((g, i) => ({ g, i })).filter(o => catLine === 'all' || o.g.line === catLine);
+  const list = groups.map((g, i) => ({ g, i })).filter(o => catLine === 'all' || (catLine === 'clearance' ? isClear(o.g) : o.g.line === catLine));
   if (!list.length) { grid.innerHTML = '<p class="muted">No designs are in stock in this line right now.</p>'; return; }
   grid.innerHTML = list.map(({ g, i }) => `
     <div class="item pm-card" onclick="openItem(${i})">
       ${g.photo_url ? `<img src="${esc(g.photo_url)}" alt="${esc(g.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
                     : `<div class="ph-empty">Photo coming soon</div>`}
       ${g.slides.length > 1 ? `<span class="pm-badge">${g.slides.length} photos</span>` : ''}
-      ${g.soldOut ? '<span class="pm-soldout">Made to order</span>' : CLEARANCE[g.sku] ? '<span class="pm-clear">Clearance</span>' : ''}
+      ${g.soldOut ? '<span class="pm-soldout">Made to order</span>' : isClear(g) ? '<span class="pm-clear">Clearance</span>' : ''}
       <div class="info">
         <div class="code">${esc(g.sku)}</div>
         <h3>${esc(g.design)}</h3>
