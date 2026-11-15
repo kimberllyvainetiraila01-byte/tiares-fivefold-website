@@ -86,6 +86,8 @@ h2{font-size:40px;font-weight:700;margin:0 0 12px;line-height:1.1}
 .cat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:16px}
 .item{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;display:flex;flex-direction:column;position:relative}
 .pm-badge{position:absolute;top:8px;left:8px;background:rgba(31,29,26,.78);color:#fff;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px}
+.pm-clear{position:absolute;top:8px;right:8px;background:#b3261e;color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;letter-spacing:.3px}
+.was{color:#8a8a8a;text-decoration:line-through;font-weight:500;font-size:.85em;margin-left:6px}
 .pm-soldout{position:absolute;top:8px;right:8px;background:var(--accent-dark);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
 .item img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eef0ea;display:block}
 .item .ph-empty{width:100%;aspect-ratio:1/1;background:#eef0ea;display:flex;align-items:center;justify-content:center;color:#777;font-size:13px}
@@ -385,6 +387,12 @@ const optWord = g => (g.sizes.some(s => s.size !== 'One size') && g.sizes.every(
   : g.sizes.every(s => /\bstyle\b/i.test(s.size)) ? 'Style' : 'Size';
 // Options of one design can have different prices: show "From" the lowest until one is chosen.
 const priceText = g => (g.priceVaries ? 'From ' : '') + K(g.price);
+// Clearance designs: stock code and the price before clearance. Shows a Clearance label and the old price crossed out.
+const CLEARANCE = {
+  'AT-NK-138': 180,
+  'AT-NK-151': 160
+};
+const wasHtml = g => CLEARANCE[g.sku] ? ` <span class="was">${K(CLEARANCE[g.sku])}</span>` : '';
 
 // Website-only groupings: separate stock codes shown to customers as one design with colour choices.
 // The inventory keeps the separate codes, and carts and orders still use them.
@@ -502,12 +510,12 @@ function renderGrid() {
       ${g.photo_url ? `<img src="${esc(g.photo_url)}" alt="${esc(g.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
                     : `<div class="ph-empty">Photo coming soon</div>`}
       ${g.slides.length > 1 ? `<span class="pm-badge">${g.slides.length} photos</span>` : ''}
-      ${g.soldOut ? '<span class="pm-soldout">Made to order</span>' : ''}
+      ${g.soldOut ? '<span class="pm-soldout">Made to order</span>' : CLEARANCE[g.sku] ? '<span class="pm-clear">Clearance</span>' : ''}
       <div class="info">
         <div class="code">${esc(g.sku)}</div>
         <h3>${esc(g.design)}</h3>
         <div class="meta">${g.soldOut ? 'Made in your size' : `${g.opt}s: ${esc(g.sizes.map(s => s.size).join(', '))}`}</div>
-        <div class="price">${priceText(g)}</div>
+        <div class="price">${priceText(g)}${wasHtml(g)}</div>
         <div class="pm-tap">${g.soldOut ? 'Tap to order in your size' : `Tap for ${g.opt.toLowerCase()}s &amp; to order`}</div>
       </div>
     </div>`).join('');
@@ -558,7 +566,7 @@ function openItem(i) {
   pmRenderGallery();
   document.getElementById('pmDesign').textContent = cur.design;
   document.getElementById('pmCode').textContent = 'Code: ' + cur.sku;
-  document.getElementById('pmPrice').textContent = priceText(cur);
+  document.getElementById('pmPrice').innerHTML = priceText(cur) + wasHtml(cur);
   document.getElementById('pmCustom').value = '';
   document.getElementById('pmCustomWrap').hidden = true;
   document.getElementById('pmOptH').textContent = cur.soldOut ? 'Made to order in your size' : 'Choose a ' + cur.opt.toLowerCase();
@@ -684,7 +692,7 @@ function pmUpdate() {
   document.getElementById('pmAdd').disabled = !ready;
   const o = chosen >= 0 ? curSizes[chosen] : null;
   document.getElementById('pmCode').textContent = 'Code: ' + (o ? optSku(cur, o) : cur.sku);
-  document.getElementById('pmPrice').textContent = o ? K(optPrice(cur, o)) : priceText(cur);
+  document.getElementById('pmPrice').innerHTML = (o ? K(optPrice(cur, o)) : priceText(cur)) + wasHtml(cur);
   document.getElementById('pmHint').textContent = hint;
   pmShowQty();
 }
