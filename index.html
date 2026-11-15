@@ -381,7 +381,10 @@ const skuNum = s => { const m = String(s || '').match(/(\d+)\s*$/); return m ? p
 // Some designs (for example earrings) come in colours instead of sizes. Their options are typed as colour names.
 const COLOUR_RE = /\b(red|blue|black|white|gold|golden|silver|pink|purple|green|yellow|orange|brown|cream|grey|gray|teal|maroon|navy|peach|beige|aqua|turquoise|violet|lilac|mauve|coral|mustard|olive|ivory|bronze|copper|rose|multi|multicolou?red|mixed|clear|lime|mint|burgundy|magenta|khaki|rust|honeygold)\b/i;
 const isColour = v => v !== 'One size' && COLOUR_RE.test(String(v || ''));
-const optWord = g => (g.sizes.some(s => s.size !== 'One size') && g.sizes.every(s => s.size === 'One size' || isColour(s.size))) ? 'Colour' : 'Size';
+const optWord = g => (g.sizes.some(s => s.size !== 'One size') && g.sizes.every(s => s.size === 'One size' || isColour(s.size))) ? 'Colour'
+  : g.sizes.every(s => /\bstyle\b/i.test(s.size)) ? 'Style' : 'Size';
+// Options of one design can have different prices: show "From" the lowest until one is chosen.
+const priceText = g => (g.priceVaries ? 'From ' : '') + K(g.price);
 
 // Website-only groupings: separate stock codes shown to customers as one design with colour choices.
 // The inventory keeps the separate codes, and carts and orders still use them.
@@ -448,7 +451,9 @@ async function loadCatalogue() {
         return;
       }
       if (!bySku.has(r.sku)) bySku.set(r.sku, { sku: r.sku, line: r.line, design: r.design, price: r.price, photo_url: r.photo_url, sizes: [] });
-      bySku.get(r.sku).sizes.push({ size: r.size || 'One size', units: r.units, in_stock: !!r.in_stock, photo: r.photo_url || '' });
+      const g0 = bySku.get(r.sku);
+      g0.price = Math.min(g0.price, r.price);
+      g0.sizes.push({ size: r.size || 'One size', units: r.units, in_stock: !!r.in_stock, photo: r.photo_url || '', price: r.price });
     });
     // Show a design only if at least one of its sizes is in stock; sold-out sizes stay visible but greyed out.
     // Handprinted designs from 064 onwards always show, even when sold out, so customers can order them made to size.
@@ -458,6 +463,7 @@ async function loadCatalogue() {
     groups.forEach(g => {
       g.sizes.sort((a, b) => String(a.size).localeCompare(String(b.size), undefined, { numeric: true }));
       g.opt = optWord(g);
+      g.priceVaries = new Set(g.sizes.map(x => Number(optPrice(g, x)))).size > 1;
       g.soldOut = !g.sizes.some(s => s.in_stock);
       g.slides = slidesFor(g);
       (MORE_PHOTOS[g.sku] || []).forEach(x => g.slides.push({ url: productImg(x.file), labels: [x.label] }));
@@ -501,7 +507,7 @@ function renderGrid() {
         <div class="code">${esc(g.sku)}</div>
         <h3>${esc(g.design)}</h3>
         <div class="meta">${g.soldOut ? 'Made in your size' : `${g.opt}s: ${esc(g.sizes.map(s => s.size).join(', '))}`}</div>
-        <div class="price">${K(g.price)}</div>
+        <div class="price">${priceText(g)}</div>
         <div class="pm-tap">${g.soldOut ? 'Tap to order in your size' : `Tap for ${g.opt.toLowerCase()}s &amp; to order`}</div>
       </div>
     </div>`).join('');
@@ -552,14 +558,14 @@ function openItem(i) {
   pmRenderGallery();
   document.getElementById('pmDesign').textContent = cur.design;
   document.getElementById('pmCode').textContent = 'Code: ' + cur.sku;
-  document.getElementById('pmPrice').textContent = K(cur.price);
+  document.getElementById('pmPrice').textContent = priceText(cur);
   document.getElementById('pmCustom').value = '';
   document.getElementById('pmCustomWrap').hidden = true;
   document.getElementById('pmOptH').textContent = cur.soldOut ? 'Made to order in your size' : 'Choose a ' + cur.opt.toLowerCase();
   // Custom sizes are for clothing; colour options have no custom choice.
   // A design with no stock left is offered as a custom size only, made to order.
   document.getElementById('pmSizes').innerHTML = (cur.soldOut ? '' : curSizes.map((s, n) =>
-    `<button class="pm-size" ${s.in_stock ? '' : 'disabled title="Sold out"'} onclick="pmPick(${n})">${esc(s.size)}</button>`).join('')) +
+    `<button class="pm-size" ${s.in_stock ? '' : 'disabled title="Sold out"'} onclick="pmPick(${n})">${esc(s.size)}${cur.priceVaries ? ' &middot; ' + K(optPrice(cur, s)) : ''}</button>`).join('')) +
     (cur.opt === 'Size' ? `<button class="pm-size custom" onclick="pmCustomPick()">Custom size</button>` : '');
   pmShowQty();
   if (cur.soldOut && cur.opt === 'Size') pmCustomPick(false);
@@ -678,7 +684,7 @@ function pmUpdate() {
   document.getElementById('pmAdd').disabled = !ready;
   const o = chosen >= 0 ? curSizes[chosen] : null;
   document.getElementById('pmCode').textContent = 'Code: ' + (o ? optSku(cur, o) : cur.sku);
-  document.getElementById('pmPrice').textContent = K(o ? optPrice(cur, o) : cur.price);
+  document.getElementById('pmPrice').textContent = o ? K(optPrice(cur, o)) : priceText(cur);
   document.getElementById('pmHint').textContent = hint;
   pmShowQty();
 }
