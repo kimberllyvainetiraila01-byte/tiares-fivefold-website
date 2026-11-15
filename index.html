@@ -429,6 +429,23 @@ const optSize = s => s.rsize || s.size;
 const optDesign = (g, s) => s.design || g.design;
 const optPrice = (g, s) => (s.price ?? g.price);
 
+// Extra photos for one option of a design, shown right after that option's own photo
+// (for example the real photo after a styled one, so customers see how it actually looks).
+const OPTION_PHOTOS = {
+  'AT-JW-SSR-217': {
+    'Bilum zigzag style': ['AT-JW-SSR-217-bilum-zigzag-real.jpg'],
+    'Bilum checked style': ['AT-JW-SSR-217-bilum-checked-real.jpg'],
+    'Limepot swirl style': ['AT-JW-SSR-217-limepot-swirl-real.jpg'],
+    'Kundu wide style': ['AT-JW-SSR-217-kundu-wide-real.jpg'],
+    'Stone axe style': ['AT-JW-SSR-217-stone-axe-real.jpg'],
+    'Kundu style': ['AT-JW-SSR-217-kundu-real.jpg'],
+    'Limepot diamond style': ['AT-JW-SSR-217-limepot-diamond-real.jpg'],
+    'Bilum diamond style': ['AT-JW-SSR-217-bilum-diamond-real.jpg'],
+    'Lakatoi crossed sail style': ['AT-JW-SSR-217-lakatoi-crossed-sail-real.jpg'],
+    'Lakatoi hook sail style': ['AT-JW-SSR-217-lakatoi-hook-sail-real.jpg']
+  }
+};
+
 // One slide per different photo, labelled with the options shown in it
 function slidesFor(g) {
   const out = (g.extra || []).map(x => ({ url: x.url, labels: [...x.labels] }));
@@ -437,6 +454,7 @@ function slidesFor(g) {
     let sl = out.find(x => x.url === s.photo);
     if (!sl) out.push(sl = { url: s.photo, labels: [] });
     sl.labels.push(s.size);
+    ((OPTION_PHOTOS[g.sku] || {})[s.size] || []).forEach(f => out.push({ url: productImg(f), labels: [s.size + ' · actual ring'] }));
   });
   return out;
 }
@@ -607,7 +625,7 @@ function pmRenderGallery() {
   curSlide = 0;
   if (!curSlides.length) { gal.innerHTML = ''; return; }
   if (curSlides.length === 1) { gal.innerHTML = `<img src="${esc(curSlides[0].url)}" alt="${esc(cur.design)}">`; return; }
-  const cap = sl => cur.opt === 'Colour' ? `<span class="pm-cap">${esc(sl.labels.join(' / '))}</span>` : '';
+  const cap = sl => (cur.opt === 'Colour' || cur.opt === 'Style') ? `<span class="pm-cap">${esc(sl.labels.join(' / '))}</span>` : '';
   gal.innerHTML = `
     <div class="pm-track" id="pmTrack" onscroll="pmOnScroll()">
       ${curSlides.map((sl, k) => `<div class="pm-slide"><img src="${esc(sl.url)}" alt="${esc(cur.design + ' ' + sl.labels.join(', '))}" ${k ? 'loading="lazy"' : ''}>${cap(sl)}</div>`).join('')}
