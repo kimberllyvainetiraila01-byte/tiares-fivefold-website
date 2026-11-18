@@ -179,6 +179,7 @@ footer b{color:var(--accent-soft)}
 .pm-dots button.on{background:var(--black)}
 
 /* shopping cart */
+.browse-only .cart-btn,.browse-only #policy .cards .card:first-child{display:none}
 .cart-btn{position:relative;margin-left:16px;background:none;border:0;padding:6px;cursor:pointer;color:#fff;display:inline-flex;align-items:center}
 .cart-btn:hover{color:var(--accent)}
 .cart-count{position:absolute;top:-4px;right:-6px;min-width:18px;height:18px;padding:0 4px;border-radius:999px;background:var(--accent);color:var(--black);font-size:11px;font-weight:700;line-height:18px;text-align:center}
@@ -380,6 +381,10 @@ const K = n => 'K' + Number(n || 0).toLocaleString('en-PG', { minimumFractionDig
 let groups = [], catLine = null;
 let cur = null, curSizes = [], chosen = -1, qty = 1, curSlides = [], curSlide = 0, slideTimer = null;
 const WHATSAPP_NUMBER = '67576628003';
+// Browse only: no cart or online payment. Each design has an "Ask on WhatsApp" button instead.
+// Set to false to switch the cart and bank-payment checkout back on.
+const BROWSE_ONLY = true;
+if (BROWSE_ONLY) document.documentElement.classList.add('browse-only');
 const CUSTOM = -2;
 const skuNum = s => { const m = String(s || '').match(/(\d+)\s*$/); return m ? parseInt(m[1], 10) : 999999; };
 // Some designs (for example earrings) come in colours instead of sizes. Their options are typed as colour names.
@@ -573,7 +578,7 @@ function ensureModal() {
           <span id="pmQtyN">1</span>
           <button type="button" id="pmPlus" onclick="pmQty(1)" aria-label="More">+</button>
         </div>
-        <button class="pm-add" id="pmAdd" disabled onclick="pmAddToCart()">Add to cart</button>
+        <button class="pm-add" id="pmAdd" disabled onclick="pmAction()">${BROWSE_ONLY ? 'Ask on WhatsApp' : 'Add to cart'}</button>
         <div class="pm-hint" id="pmHint">Tap a size first</div>
       </div>
     </div>`;
@@ -702,11 +707,11 @@ function pmShowQty() {
 function pmUpdate() {
   const customText = document.getElementById('pmCustom').value.trim();
   let ready = false, hint = cur.soldOut
-    ? 'This design is made to order. Type your size, then add it to your cart.'
+    ? (BROWSE_ONLY ? 'This design is made to order. Type your size, then ask us on WhatsApp.' : 'This design is made to order. Type your size, then add it to your cart.')
     : 'Tap a ' + cur.opt.toLowerCase() + ' first';
   if (chosen === CUSTOM) {
     ready = customText.length > 0;
-    hint = ready ? 'Custom size: ' + customText.slice(0, 20) + '. Made to order: add it to your cart and pay at checkout.'
+    hint = ready ? 'Custom size: ' + customText.slice(0, 20) + (BROWSE_ONLY ? '. Made to order: ask us on WhatsApp.' : '. Made to order: add it to your cart and pay at checkout.')
                  : 'Type the size you want';
   } else if (chosen >= 0) {
     ready = curSizes[chosen].in_stock;
@@ -759,6 +764,27 @@ function reconcileCart() {
     return { ...l, design: optDesign(g, sz), price: optPrice(g, sz), photo_url: sz.photo || g.photo_url, label: sz.size, units: sz.units, qty: Math.min(l.qty, sz.units) };
   }).filter(Boolean);
   saveCart(next);
+}
+
+function pmAction() { if (BROWSE_ONLY) pmAsk(); else pmAddToCart(); }
+
+// Browse-only order: open WhatsApp with the design, code, option and quantity filled in
+function pmAsk() {
+  if (!cur) return;
+  let code = cur.sku, design = cur.design, price = cur.price, opt;
+  if (chosen === CUSTOM) {
+    const t = document.getElementById('pmCustom').value.trim().slice(0, 20);
+    if (!t) return;
+    opt = 'Custom size ' + t + ' (made to order)';
+  } else {
+    const sz = curSizes[chosen];
+    if (!sz || !sz.in_stock) return;
+    code = optSku(cur, sz); design = optDesign(cur, sz); price = optPrice(cur, sz);
+    opt = sz.size === 'One size' ? 'One size' : cur.opt + ' ' + sz.size;
+  }
+  const msg = `Hi Tiare's Five Fold Creations, I would like to order:\n${design}\nCode: ${code}\n${opt}\nQuantity: ${qty}\nPrice: ${K(price)} each\nIs it available?`;
+  window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(msg)}`, '_blank');
+  document.getElementById('pmHint').textContent = 'Opening WhatsApp. Send the message and we will reply to confirm.';
 }
 
 function pmAddToCart() {
