@@ -383,7 +383,7 @@ let cur = null, curSizes = [], chosen = -1, qty = 1, curSlides = [], curSlide = 
 const WHATSAPP_NUMBER = '67576628003';
 // Browse only: no cart or online payment. Each design has an "Ask on WhatsApp" button instead.
 // Set to false to switch the cart and bank-payment checkout back on.
-const BROWSE_ONLY = true;
+const BROWSE_ONLY = false;
 if (BROWSE_ONLY) document.documentElement.classList.add('browse-only');
 const CUSTOM = -2;
 const skuNum = s => { const m = String(s || '').match(/(\d+)\s*$/); return m ? parseInt(m[1], 10) : 999999; };
