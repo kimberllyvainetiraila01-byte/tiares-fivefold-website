@@ -92,6 +92,30 @@ h2{font-size:40px;font-weight:700;margin:0 0 12px;line-height:1.1}
 .was{color:#8a8a8a;text-decoration:line-through;font-weight:500;font-size:.85em;margin-left:6px}
 .pm-soldout{position:absolute;top:8px;right:8px;background:var(--accent-dark);color:#fff;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px}
 .item img{width:100%;aspect-ratio:1/1;object-fit:cover;background:#eef0ea;display:block}
+/* photo motion: cards rise in, photos drift slowly, 2nd photo fades in and out */
+.pm-ph{position:relative;overflow:hidden}
+.pm-ph img{transition:transform .6s ease}
+.pm-card{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease,border-color .2s}
+.pm-card.in{opacity:1;transform:none}
+.pm-card .pm-ph img{animation:pmDrift 14s ease-in-out infinite alternate;animation-play-state:paused}
+.pm-card.in .pm-ph img{animation-play-state:running}
+.pm-card .pm-ph img.pm-alt{position:absolute;inset:0;height:100%;opacity:0;animation:pmDrift 14s ease-in-out infinite alternate,pmFade 9s ease-in-out infinite;animation-play-state:paused}
+.pm-card.in .pm-ph img.pm-alt{animation-play-state:running}
+.pm-card:hover .pm-ph{transform:scale(1.04)}
+.pm-card .pm-ph{transition:transform .5s ease}
+@keyframes pmDrift{from{transform:scale(1) translate(0,0)}to{transform:scale(1.08) translate(-1.5%,-1.5%)}}
+@keyframes pmFade{0%,40%{opacity:0}50%,90%{opacity:1}100%{opacity:0}}
+.pm-gal{overflow:hidden}
+.pm-slide{overflow:hidden}
+.pm-gal img{animation:pmDrift 9s ease-in-out infinite alternate}
+.pm-sheet{animation:pmPop .35s ease}
+@keyframes pmPop{from{opacity:0;transform:translateY(24px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .pm-card{opacity:1;transform:none;transition:none}
+  .pm-card .pm-ph img,.pm-gal img,.pm-sheet{animation:none!important}
+  .pm-card .pm-ph img.pm-alt{display:none}
+  .pm-card:hover .pm-ph{transform:none}
+}
 .item .ph-empty{width:100%;aspect-ratio:1/1;background:#eef0ea;display:flex;align-items:center;justify-content:center;color:#777;font-size:13px}
 .item .info{padding:12px 14px 14px}
 .item .code{font-size:12px;color:var(--accent-dark);font-weight:700;letter-spacing:.5px}
@@ -536,7 +560,7 @@ function renderGrid() {
   if (!list.length) { grid.innerHTML = '<p class="muted">No designs are in stock in this line right now.</p>'; return; }
   grid.innerHTML = list.map(({ g, i }) => `
     <div class="item pm-card" onclick="openItem(${i})">
-      ${g.photo_url ? `<img src="${esc(g.photo_url)}" alt="${esc(g.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">`
+      ${g.photo_url ? `<div class="pm-ph"><img src="${esc(g.photo_url)}" alt="${esc(g.design)}" loading="lazy" onerror="this.outerHTML='<div class=&quot;ph-empty&quot;>Photo coming soon</div>'">${g.slides.length > 1 && g.slides[1].url !== g.photo_url ? `<img class="pm-alt" src="${esc(g.slides[1].url)}" alt="" loading="lazy" onerror="this.remove()">` : ''}</div>`
                     : `<div class="ph-empty">Photo coming soon</div>`}
       ${g.slides.length > 1 ? `<span class="pm-badge">${g.slides.length} photos</span>` : ''}
       ${g.soldOut ? '<span class="pm-soldout">Made to order</span>' : isClear(g) ? '<span class="pm-clear">Clearance</span>' : ''}
@@ -548,6 +572,17 @@ function renderGrid() {
         <div class="pm-tap">${g.soldOut ? 'Tap to order in your size' : `Tap for ${g.opt.toLowerCase()}s &amp; to order`}</div>
       </div>
     </div>`).join('');
+  pmWatchCards();
+}
+
+// Cards rise in as they scroll into view; their photos only move while on screen
+let cardObs = null;
+function pmWatchCards() {
+  const cards = document.querySelectorAll('#catGrid .pm-card');
+  if (!('IntersectionObserver' in window)) { cards.forEach(c => c.classList.add('in')); return; }
+  if (cardObs) cardObs.disconnect();
+  cardObs = new IntersectionObserver(es => es.forEach(e => e.target.classList.toggle('in', e.isIntersecting)), { rootMargin: '0px 0px -5% 0px' });
+  cards.forEach(c => cardObs.observe(c));
 }
 
 // ---------- Product view with size choice and WhatsApp order ----------
@@ -639,9 +674,21 @@ function pmRenderGallery() {
     <button type="button" class="pm-arrow pm-next" onclick="pmGo(curSlide + 1)" aria-label="Next photo">&#8250;</button>
     <div class="pm-dots">${curSlides.map((sl, k) => `<button type="button" onclick="pmGo(${k})" aria-label="Photo ${k + 1}"></button>`).join('')}</div>`;
   pmDots();
+  ['pointerdown', 'touchstart', 'wheel', 'keydown'].forEach(ev => gal.addEventListener(ev, pmStopAuto, { passive: true }));
+  pmStartAuto();
 }
 
-function pmGo(k) {
+// Photos slide on by themselves every few seconds until the customer touches them
+let autoTimer = null, autoMoving = false;
+function pmStartAuto() {
+  pmStopAuto();
+  if (curSlides.length < 2 || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  autoTimer = setInterval(() => { autoMoving = true; pmGo(curSlide + 1, true); }, 4000);
+}
+function pmStopAuto() { clearInterval(autoTimer); autoTimer = null; autoMoving = false; }
+
+function pmGo(k, auto) {
+  if (!auto) pmStopAuto();
   const t = document.getElementById('pmTrack');
   if (!t) return;
   k = (k + curSlides.length) % curSlides.length;
@@ -662,6 +709,7 @@ function pmOnScroll() {
     if (k === curSlide) return;
     curSlide = k;
     pmDots();
+    if (autoMoving) { autoMoving = false; return; }
     const sl = curSlides[k];
     if (cur.opt !== 'Colour' || !sl || sl.labels.length !== 1) return;
     const n = curSizes.findIndex(s => s.size === sl.labels[0]);
@@ -729,6 +777,7 @@ function pmUpdate() {
 function pmClose(e) {
   if (e && e.target !== document.getElementById('pmModal')) return;
   document.getElementById('pmModal').hidden = true;
+  pmStopAuto();
   cur = null;
 }
 
